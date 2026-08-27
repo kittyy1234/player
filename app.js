@@ -1,3 +1,4 @@
+
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -122,6 +123,7 @@ async function extractDominantColor(imageUrl) {
   } catch (e) { return null; }
 }
 function playUriQuiet(uri) {
+  // Play without stealing focus (keeps Roblox / current app in front)
   const script = `
     tell application "System Events"
       set frontApp to name of first application process whose frontmost is true
@@ -129,14 +131,20 @@ function playUriQuiet(uri) {
     tell application "Spotify"
       play track "${uri}"
     end tell
-    delay 0.15
+    delay 0.08
+    tell application "System Events"
+      try
+        set frontmost of process frontApp to true
+      end try
+    end tell
+    delay 0.12
     tell application "System Events"
       try
         set frontmost of process frontApp to true
       end try
     end tell
   `;
-  exec(`osascript -e '${script}'`);
+  exec(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`);
 }
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -238,7 +246,30 @@ ipcMain.on('spotify-control', async (event, data) => {
     exec(`osascript -e '${script}'`);
     return;
   }
+  // Manual login / reconnect from the drawer button
+  if (data.action === 'login') {
+    runLoginFlow().then(async () => {
+      try {
+        let all = [];
+        let url = '/me/playlists?limit=50';
+        while (url) {
+          const res = await spotifyGet(url);
+          if (!res || !res.items) break;
+          all = all.concat(res.items.map((p) => ({
+            title: p.name, id: p.uri, isPlaylist: true,
+            image: (p.images && p.images[0]) ? p.images[0].url : null,
+            artist: p.tracks ? `${p.tracks.total} tracks` : '',
+          })));
+          url = res.next ? res.next.replace('https://api.spotify.com/v1', '') : null;
+        }
+        if (all.length > 0) savePlaylists(all);
+        if (win && !win.isDestroyed()) win.webContents.send('playlists-reply', all);
+      } catch (e) {}
+    }).catch(() => {});
+    return;
+  }
   if (data.action === 'playUri' || data.action === 'playPlaylist') {
+    // playPlaylist comes as a playlist URI – Spotify accepts playlist URIs with "play track"
     playUriQuiet(data.value);
     return;
   }
@@ -254,6 +285,7 @@ ipcMain.on('spotify-control', async (event, data) => {
         all = all.concat(res.items.map((p) => ({
           title: p.name, id: p.uri, isPlaylist: true,
           image: (p.images && p.images[0]) ? p.images[0].url : null,
+          artist: p.tracks ? `${p.tracks.total} tracks` : '',
         })));
         url = res.next ? res.next.replace('https://api.spotify.com/v1', '') : null;
       }
