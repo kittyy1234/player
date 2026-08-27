@@ -13,7 +13,7 @@
     "mac": {
       "category": "public.app-category.music",
       "target": "dir",
-      "icon": "build/icon.png"
+      "icon": "icon.png"
     },
     "directories": {
       "buildResources": "build"
