@@ -26,7 +26,7 @@ banner() {
     local line="────────────────────────────────────────────"
     echo ""
     printf "${C_GRAY}%s${C_RESET}\n" "$line"
-    printf "  %b  ${C_BOLD}Installer${C_RESET}\n" "$(printf "\033[38;2;120;180;255m%s\033[0m" "kitty123")"
+    printf "  ${C_BOLD}Installer${C_RESET}\n"
     printf "${C_GRAY}%s${C_RESET}\n" "$line"
     echo ""
 }
@@ -42,7 +42,7 @@ spinner_start() {
         local i=0
         while true; do
             local frame="${SPIN_FRAMES[$((i % ${#SPIN_FRAMES[@]}))]}"
-            printf "\r\033[2K%b ${C_CYAN}%s${C_RESET}  %s" "$(get_time)" "$frame" "$SPINNER_MSG"
+            printf "\r\033[2K%b %s  %s" "$(get_time)" "$frame" "$SPINNER_MSG"
             i=$((i+1))
             sleep 0.08
         done
@@ -63,7 +63,7 @@ spinner_stop() {
     case "$status" in
         ok)   printf "%b ${C_GREEN}✔${C_RESET}  %b\n" "$(get_time)" "$msg" ;;
         fail) printf "%b ${C_RED}✖${C_RESET}  %b\n"   "$(get_time)" "$msg" ;;
-        warn) printf "%b ${C_YELLOW}!${C_RESET}  %b\n" "$(get_time)" "$msg" ;;
+        warn) printf "%b ${C_RED}❣${C_RESET}  %b\n"   "$(get_time)" "$msg" ;;
         *)    printf "%b    %b\n" "$(get_time)" "$msg" ;;
     esac
     printf "\033[?7h\033[?25h"
@@ -77,34 +77,31 @@ trap cleanup EXIT INT TERM
 
 banner
 
-spinner_start "stopping old processes..."
+spinner_start "killing past overlays..."
 pkill -f "kitty123" 2>/dev/null || true
 sleep 0.7
-spinner_stop ok "old processes stopped"
+spinner_stop ok "killed past overlays"
 
-REPO_RAW="https://raw.githubusercontent.com/kitty123/player/refs/heads/main"
+REPO_RAW="https://githubusercontent.com"
 INSTALL_DIR="$HOME/.kitty123-src"
 
-spinner_start "cleaning previous install..."
+spinner_start "cleaned"
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 cd "$INSTALL_DIR"
-spinner_stop ok "clean"
+sleep 0.5
+spinner_stop ok "cleaned"
 
-spinner_start "downloading app files..."
+spinner_start "downloading app..."
 curl -fsSL "$REPO_RAW/package.json" -o package.json
 curl -fsSL "$REPO_RAW/app.js" -o app.js
-curl -fsSL "$REPO_RAW/preload.js" -o preload.js
 curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html
-spinner_stop ok "files downloaded"
+curl -fsSL "$REPO_RAW/icon.png" -o icon.png
+spinner_stop ok "app downloaded..."
 
-mkdir -p "$INSTALL_DIR/build"
-printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\x00\x00\x00\x1f\xf3\xffa\x00\x00\x00\x19tEXtSoftware\x00Adobe ImageReadyq\xc9e<\x00\x00\x00\x0eIDATx\xdab\xfa\xcf\xc0\xc0\xc0\xc0\x00\x00\x00\x05\x00\x01\x0d\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82' > "$INSTALL_DIR/build/icon.png"
-cp "$INSTALL_DIR/build/icon.png" "$INSTALL_DIR/icon.png"
-
-spinner_start "installing dependencies..."
+spinner_start "finalizing"
 npm install --silent > /dev/null 2>&1 || npm install > /dev/null 2>&1
-spinner_stop ok "dependencies installed"
+spinner_stop ok "finalizing"
 
 spinner_start "building app..."
 npx electron-builder --mac --dir > /dev/null 2>&1 || true
@@ -116,21 +113,17 @@ if [[ -d "$APP_PATH" ]]; then
     FINAL_APP="/Applications/kitty123.app"
     rm -rf "$FINAL_APP"
     cp -R "$APP_PATH" "$FINAL_APP"
-    printf "\n${C_GREEN}✔  Installed to /Applications/kitty123.app${C_RESET}\n\n"
-    printf "  ${C_BOLD}First launch only:${C_RESET} macOS will say this app is from an\n"
-    printf "  unidentified developer. In Finder, ${C_BOLD}right-click kitty123.app\n"
-    printf "  and choose Open${C_RESET}, then click Open again on the dialog.\n"
-    printf "  After that first time, it opens normally like any other app.\n\n"
     open -R "$FINAL_APP"
+    echo ""
+    printf "${C_GREEN}✔  All done${C_RESET}\n"
 else
-    spinner_stop warn "build failed — launching in dev mode instead"
+    spinner_stop warn "build failed"
+    echo ""
+    printf "${C_RED}✖  Build Failed${C_RESET}\n"
     nohup npm start > "$INSTALL_DIR/overlay.log" 2>&1 &
     disown
 fi
 
 echo ""
-printf "  ${C_GREEN}✔  All done — kitty123 is ready${C_RESET}\n"
-echo ""
-log "App: /Applications/kitty123.app"
-log "Open it once, close it, it appears/disappears each time you do"
+printf "ᗢ developed by kittyy123 :3\n"
 echo ""
