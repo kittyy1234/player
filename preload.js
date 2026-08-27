@@ -1,4 +1,3 @@
-
 const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   resizeWindow: (bounds) => ipcRenderer.send('resize-window', bounds),
@@ -7,4 +6,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPlaylistsReply: (cb) => ipcRenderer.on('playlists-reply', (_, data) => cb(data)),
   onTracksReply: (cb) => ipcRenderer.on('tracks-reply', (_, data) => cb(data)),
   onSearchReply: (cb) => ipcRenderer.on('search-reply', (_, data) => cb(data)),
+  onAuthStatus: (cb) => ipcRenderer.on('auth-status', (_, data) => cb(data)),
 });
