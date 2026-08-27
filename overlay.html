@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -556,7 +555,10 @@ function populateList(items){
   const container=document.getElementById("listContainer");
   container.innerHTML="";
   if(!items||items.length===0){
-    container.innerHTML=`<div class="search-hint">No playlists found<br><br>Connect your Spotify account below</div>`;
+    const connected = loginBtn && loginBtn.classList.contains('connected');
+    container.innerHTML = connected
+      ? `<div class="search-hint">Connected, but no playlists loaded.<br><br>Click <b>Reconnect Spotify</b> below<br>to grant playlist access, then open this tab again.</div>`
+      : `<div class="search-hint">No playlists found<br><br>Click <b>Connect Spotify</b> below to log in</div>`;
     return;
   }
   items.forEach(item=>{
@@ -619,16 +621,47 @@ document.getElementById('backBtn').addEventListener('click',()=>{
 });
 
 // Spotify connect / reconnect button
-document.getElementById('spotifyLoginBtn').addEventListener('click',()=>{
+const loginBtn = document.getElementById('spotifyLoginBtn');
+loginBtn.addEventListener('click', () => {
+  loginBtn.textContent = 'Connecting…';
+  loginBtn.disabled = true;
   window.electronAPI.sendControl('login');
+  setTimeout(() => {
+    loginBtn.disabled = false;
+    if (!loginBtn.classList.contains('connected')) {
+      loginBtn.textContent = 'Connect Spotify';
+    }
+  }, 15000);
 });
+
+// Auth status from main process → update button label
+if (window.electronAPI.onAuthStatus) {
+  window.electronAPI.onAuthStatus((data) => {
+    if (data && data.connected) {
+      loginBtn.textContent = 'Reconnect Spotify';
+      loginBtn.classList.add('connected');
+      loginBtn.disabled = false;
+    } else {
+      loginBtn.textContent = 'Connect Spotify';
+      loginBtn.classList.remove('connected');
+      loginBtn.disabled = false;
+    }
+  });
+}
 
 document.getElementById('islandWaves').addEventListener('click',()=>{
   drawerOpen=!drawerOpen;
   const dr=document.getElementById("extendedDrawer");
   if(drawerOpen){
     dr.classList.add("open");
-    if(!viewingPlaylist) window.electronAPI.sendControl('getRealPlaylists');
+    // Always try to load playlists when opening the drawer
+    if(!viewingPlaylist) {
+      const container = document.getElementById('listContainer');
+      if (!loadedPlaylistsMemory.length) {
+        container.innerHTML = `<div class="search-hint">Loading playlists…</div>`;
+      }
+      window.electronAPI.sendControl('getRealPlaylists');
+    }
   }else{
     dr.classList.remove("open");
   }
@@ -661,8 +694,18 @@ document.getElementById('tabSearch').addEventListener('click',e=>{
 });
 
 window.electronAPI.onPlaylistsReply(playlists=>{
-  loadedPlaylistsMemory=playlists;
-  if(document.getElementById('tabPlaylists').classList.contains('active')&&!viewingPlaylist)populateList(playlists);
+  loadedPlaylistsMemory = playlists || [];
+  // Always refresh the list when we're on Playlists and not inside a playlist
+  if (!viewingPlaylist && document.getElementById('tabPlaylists').classList.contains('active')) {
+    populateList(loadedPlaylistsMemory);
+  }
+  if (loginBtn) {
+    if (loadedPlaylistsMemory.length > 0) {
+      loginBtn.textContent = 'Reconnect Spotify';
+      loginBtn.classList.add('connected');
+    }
+    loginBtn.disabled = false;
+  }
 });
 window.electronAPI.onTracksReply(tracks=>{if(viewingPlaylist)populateList(tracks)});
 window.electronAPI.onSearchReply(tracks=>{populateList(tracks)});
