@@ -92,10 +92,10 @@ sleep 0.5
 spinner_stop ok "cleaned"
 
 spinner_start "downloading app..."
-curl -fsSL "$REPO_RAW/package.json" -o package.json
-curl -fsSL "$REPO_RAW/app.js" -o app.js
-curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html
-curl -fsSL "$REPO_RAW/icon.png" -o icon.png
+curl -fsSL "$REPO_RAW/package.json" -o package.json || { spinner_stop warn "build failed"; echo ""; printf "${C_RED}✖  Build Failed${C_RESET}\n"; exit 1; }
+curl -fsSL "$REPO_RAW/app.js" -o app.js || { spinner_stop warn "build failed"; echo ""; printf "${C_RED}✖  Build Failed${C_RESET}\n"; exit 1; }
+curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html || { spinner_stop warn "build failed"; echo ""; printf "${C_RED}✖  Build Failed${C_RESET}\n"; exit 1; }
+curl -fsSL "$REPO_RAW/icon.png" -o icon.png || { spinner_stop warn "build failed"; echo ""; printf "${C_RED}✖  Build Failed${C_RESET}\n"; exit 1; }
 spinner_stop ok "app downloaded..."
 
 spinner_start "finalizing"
@@ -126,4 +126,4 @@ else
     disown
 fi
 
-#mog
+#mogx2
