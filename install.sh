@@ -25,7 +25,6 @@ die() { spinner_stop "fail" "$1"; exit 1; }
 banner() {
     local line="────────────────────────────────────────────"
     echo ""
-    printf "${C_GRAY}%s${C_RESET}\n" "$line"
     printf "  ${C_BOLD}Installer${C_RESET}\n"
     printf "${C_GRAY}%s${C_RESET}\n" "$line"
     echo ""
@@ -116,6 +115,9 @@ if [[ -d "$APP_PATH" ]]; then
     open -R "$FINAL_APP"
     echo ""
     printf "${C_GREEN}✔  All done${C_RESET}\n"
+    echo ""
+    printf "ᗢ developed by kittyy123 :3\n"
+    echo ""
 else
     spinner_stop warn "build failed"
     echo ""
@@ -124,6 +126,4 @@ else
     disown
 fi
 
-echo ""
-printf "ᗢ developed by kittyy123 :3\n"
-echo ""
+## i mog :/
