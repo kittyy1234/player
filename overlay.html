@@ -7,22 +7,61 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:transparent !important;background-color:rgba(0,0,0,0) !important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;user-select:none;-webkit-user-select:none}
 body{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
-.shell{-webkit-app-region:drag;width:450px;height:80px;border-radius:18px;background:rgba(16,16,19,.88);border:1px solid rgba(255,255,255,.22);box-shadow:0 12px 40px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;align-items:center;padding:0 12px;gap:12px;position:relative;overflow:hidden;transition:all 0.25s ease-in-out}
-.art{-webkit-app-region:no-drag;width:56px;height:56px;border-radius:12px;background:rgba(45,45,50,.8);object-fit:cover;flex-shrink:0;cursor:pointer}
-.artph{width:56px;height:56px;border-radius:12px;background:rgba(45,45,50,.8);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.25);font-size:20px;flex-shrink:0;cursor:pointer;-webkit-app-region:no-drag}
-.meta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;height:64px;position:relative}
-.track{color:#fff;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:55px}
-.artist{color:rgb(170,170,178);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:55px}
-.row{display:flex;align-items:center;gap:8px;margin-top:8px}
-.btns{-webkit-app-region:no-drag;display:flex;gap:12px;flex-shrink:0;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
-.btns span:hover{color:rgb(255,182,193)}
-.progress-wrap{-webkit-app-region:no-drag;flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+
+/* Outer layout wrapper providing clean clearance for large cat ears */
+.cat-container{position:relative;width:450px;height:124px;padding-top:18px}
+
+/* Thickened, high-contrast structural cat ears protruding above the layout frame */
+.cat-ear{position:absolute;top:-4px;width:56px;height:40px;background:rgba(20,20,24,.98);border:2px solid #fff;z-index:0;box-shadow:0 -3px 12px rgba(0,0,0,0.45);transition:all 0.3s ease}
+.cat-ear.left{left:18px;border-bottom:none;clip-path:polygon(0% 100%, 45% 0%, 100% 100%)}
+.cat-ear.right{right:18px;border-bottom:none;clip-path:polygon(0% 100%, 55% 0%, 100% 100%)}
+.ear-inner{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:34px;height:26px;background:rgb(255,153,174);clip-path:polygon(0% 100%, 50% 0%, 100% 100%);opacity:0.98}
+
+/* Core application media interface layout controller properties */
+.shell{-webkit-app-region:drag;width:450px;height:106px;border-radius:24px;background:rgba(16,16,19,.9);border:1px solid rgba(255,255,255,.22);box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;align-items:center;padding:0 14px;gap:12px;position:relative;overflow:hidden;z-index:1;transition:all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)}
+.shell::before{content:"";position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 12% 50%, var(--bg-glow, transparent) 0%, transparent 65%);opacity:0.45;z-index:0;pointer-events:none;transition:background 0.6s ease}
+
+/* Inline graphic vectors providing localized cat whiskers and face coordinates */
+.shell::after{content:"";position:absolute;left:0;right:0;top:0;bottom:0;pointer-events:none;background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://w3.org" viewBox="0 0 450 106"><path d="M6 38h22M4 44h24M7 50h21M444 38h-22M446 44h-24M443 50h-21" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round"/><circle cx="160" cy="20" r="4" fill="rgba(255,255,255,0.15)"/><circle cx="290" cy="20" r="4" fill="rgba(255,255,255,0.15)"/><path d="M222 25h6l-3 4z" fill="rgb(255,192,203)"/><path d="M222 29q3 3 3 0q0 3 3 0" stroke="rgb(255,192,203)" stroke-width="1" fill="none"/></svg>');background-repeat:no-repeat;background-size:100% 100%;z-index:0}
+
+.left-block{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;width:64px;position:relative;z-index:1;margin-top:2px}
+
+/* Artwork block carrying cat face shape geometry mask */
+.art-wrapper{-webkit-app-region:no-drag;position:relative;width:56px;height:52px;cursor:pointer}
+.art,.artph{width:100%;height:100%;object-fit:cover;background:rgba(45,45,50,.8);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.25);font-size:20px;clip-path:polygon(0% 30%, 14% 0%, 35% 20%, 65% 20%, 86% 0%, 100% 30%, 100% 85%, 82% 100%, 18% 100%, 0% 85%)}
+
+/* Downsized White brand text subtitle */
+.brand-label{color:#fff;font-size:8px;font-weight:600;letter-spacing:0.3px;text-align:center;width:100%;white-space:nowrap;opacity:0.95}
+</style>
+</head>
+
+<style>
+.meta{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;height:90px;position:relative;padding-right:55px;z-index:1}
+.track{color:#fff;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.marquee-window{width:100%;overflow:hidden;white-space:nowrap;position:relative;height:16px;margin-top:2px;mask-image:linear-gradient(to right, #000 0%, #000 85%, transparent 100%);-webkit-mask-image:linear-gradient(to right, #000 0%, #000 85%, transparent 100%)}
+.artist{color:rgb(170,170,178);font-size:12px;display:inline-block;white-space:nowrap}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+.row{display:flex;flex-direction:column;gap:4px;margin-top:6px;width:100%}
+.progress-wrap{-webkit-app-region:no-drag;display:flex;flex-direction:column;gap:2px;min-width:0;width:100%}
 .bar-bg{height:4px;border-radius:2px;background:rgba(255,255,255,.25);position:relative;cursor:pointer}
 .bar-fill{height:100%;width:0%;border-radius:2px;background:#fff;transition:width 0.1s linear}
-.times{display:flex;justify-content:space-between;color:rgb(170,170,178);font-size:10px;font-variant-numeric:tabular-nums}
-.island-waves{-webkit-app-region:no-drag;position:absolute;right:8px;top:6px;display:flex;align-items:flex-end;gap:3px;height:22px;width:48px;justify-content:flex-end;cursor:pointer;z-index:10}
+.times-row{display:flex;align-items:center;justify-content:space-between;color:rgb(170,170,178);font-size:11px;font-variant-numeric:tabular-nums;margin-top:2px;width:100%}
+.time-label{width:50px;flex-shrink:0}
+#tTot{text-align:right}
+.centered-controls-group{display:flex;align-items:center;justify-content:center;gap:18px;flex:1}
+.btns{-webkit-app-region:no-drag;display:flex;align-items:center;gap:16px;flex-shrink:0;cursor:pointer}
+.btns svg{fill:rgba(255,255,255,0.66);transition:fill 0.15s ease}
+.btns svg:hover{fill:#fff}
+.btns #btnPP{fill:#fff;display:flex;align-items:center;justify-content:center;width:20px;height:20px}
+.vol-container{-webkit-app-region:no-drag;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.vol-icon{cursor:pointer;width:20px;height:20px;display:flex;align-items:center;justify-content:center}
+.vol-icon svg{fill:rgb(170,170,178);transition:fill 0.15s ease}
+.vol-icon:hover svg{fill:#fff}
+.vol-bg{width:50px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);position:relative;cursor:pointer}
+.vol-fill{height:100%;width:70%;border-radius:2px;background:#fff}
+.island-waves{-webkit-app-region:no-drag;position:absolute;right:8px;top:20px;display:flex;align-items:flex-end;gap:3px;height:22px;width:48px;justify-content:flex-end;cursor:pointer;z-index:10}
 .wave-bar{width:3px;height:6px;border-radius:2px;transition:height 0.12s ease-in-out,background 0.3s ease;background:linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a)}
-.drawer{-webkit-app-region:no-drag;width:450px;height:0px;border-radius:18px;background:rgba(16,16,19,.92);border:0px solid rgba(255,255,255,.22);box-shadow:0 12px 40px rgba(0,0,0,.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;transition:all 0.25s ease-in-out;opacity:0}
+.drawer{-webkit-app-region:no-drag;width:450px;height:0px;border-radius:18px;background:rgba(16,16,19,.92);border:0px solid rgba(255,255,255,.22);box-shadow:0 12px 40px rgba(0,0,0,.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;transition:all 0.25s ease-in-out;opacity:0;z-index:2}
 .drawer.open{height:320px;border:1px solid rgba(255,255,255,.22);opacity:1;padding:12px}
 .search-box{width:100%;padding:8px 12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;outline:none;font-size:12px;margin-bottom:12px}
 .search-box::placeholder{color:rgba(255,255,255,.4)}
@@ -42,27 +81,51 @@ body{display:flex;align-items:center;justify-content:center;flex-direction:colum
 .play-btn:hover{background:rgba(255,182,193,.15)}
 .search-hint{color:rgba(255,255,255,.4);font-size:11px;text-align:center;padding:20px 10px}
 </style>
-</head>
+
 <body>
-<div class="shell" id="playerShell">
-  <img class="art" id="art" alt="" style="display:none"/>
-  <div class="artph" id="artPh">♪</div>
-  <div class="meta">
-    <div class="track" id="track">Connecting...</div>
-    <div class="artist" id="artist"></div>
-    <div class="island-waves" id="islandWaves" title="Click to expand">
-      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-    </div>
-    <div class="row">
-      <div class="btns">
-        <span id="btnPrev">|&lt;</span>
-        <span id="btnPP">||</span>
-        <span id="btnNext">&gt;|</span>
+<div class="cat-container">
+  <div class="cat-ear left"><div class="ear-inner"></div></div>
+  <div class="cat-ear right"><div class="ear-inner"></div></div>
+  <div class="shell" id="playerShell">
+    <div class="left-block">
+      <div class="art-wrapper" id="artAction">
+        <img class="art" id="art" alt="" style="display:none"/>
+        <div class="artph" id="artPh">♪</div>
       </div>
-      <div class="progress-wrap">
-        <div class="bar-bg" id="progressBg"><div class="bar-fill" id="fill"></div></div>
-        <div class="times"><span id="tCur">0:00</span><span id="tTot">0:00</span></div>
+      <div class="brand-label">KittyPlayer :3</div>
+    </div>
+    <div class="meta">
+      <div class="track" id="track">Connecting...</div>
+      <div class="marquee-window" id="marqueeWindow">
+        <div class="artist" id="artist"></div>
+      </div>
+      <div class="island-waves" id="islandWaves" title="Click to expand">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      </div>
+      <div class="row">
+        <div class="progress-wrap">
+          <div class="bar-bg" id="progressBg"><div class="bar-fill" id="fill"></div></div>
+        </div>
+        <div class="times-row">
+          <span id="tCur" class="time-label">0:00</span>
+          <div class="centered-controls-group">
+            <div class="btns">
+              <svg id="btnPrev" width="20" height="20" viewBox="0 0 24 24"><path d="M6 19h2V5H6v14zm3.5-7L18 19V5L9.5 12z"/></svg>
+              <div id="btnPP">
+                <svg width="20" height="20" viewBox="0 0 24 24" id="svgPP"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </div>
+              <svg id="btnNext" width="20" height="20" viewBox="0 0 24 24"><path d="M4 5v14l8.5-7L4 5zm12 0v14h2V5h-2z"/></svg>
+            </div>
+            <div class="vol-container">
+              <div class="vol-icon" id="volIcon">
+                <svg width="20" height="20" viewBox="0 0 24 24" id="svgVol"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              </div>
+              <div class="vol-bg" id="volBg"><div class="vol-fill" id="volFill"></div></div>
+            </div>
+          </div>
+          <span id="tTot" class="time-label">0:00</span>
+        </div>
       </div>
     </div>
   </div>
@@ -77,24 +140,99 @@ body{display:flex;align-items:center;justify-content:center;flex-direction:colum
   <div class="back-btn" id="backBtn">&lt; Back to Playlists</div>
   <div class="list-container" id="listContainer"></div>
 </div>
+<canvas id="colorThiefCanvas" style="display:none;" width="50" height="50"></canvas>
+
 <script>
-let total=1,pos=0,playing=false,lastImg="",baseScale=1.0,drawerOpen=false,viewingPlaylist=false;
+let total=1,pos=0,playing=false,lastImg="",baseScale=1.0,drawerOpen=false,viewingPlaylist=false,currentVolume=0.7,isMuted=false,savedVolume=0.7;
 let recentTracksMemory=[],loadedPlaylistsMemory=[],currentGradient="linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a)";
+const playPath="M8 5v14l11-7z",pausePath="M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const volHigh="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
+const volLow="M7 9v6h4l5 5V4l-5 5H7zm11.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z",volMute="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z";
+
 function fmt(s){s=Math.max(0,Math.floor(s+.5));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
 function updateWaveColors(r,g,b){
     const r2=Math.min(255,r+40),g2=Math.min(255,g+30),b2=Math.min(255,b+50);
     const r3=Math.max(0,Math.floor(r*0.6)),g3=Math.max(0,Math.floor(g*0.7)),b3=Math.min(255,b+80);
     currentGradient=`linear-gradient(180deg,rgb(${r},${g},${b}),rgb(${r2},${g2},${b2}),rgb(${r3},${g3},${b3}))`;
     document.querySelectorAll('.wave-bar').forEach(bar=>{bar.style.background=currentGradient});
+    document.getElementById('playerShell').style.setProperty('--bg-glow', `rgb(${r},${g},${b})`);
 }
+function extractColorsFromImage(imgEl){
+    try{
+        const canvas=document.getElementById('colorThiefCanvas');
+        const ctx=canvas.getContext('2d');
+        ctx.clearRect(0,0,50,50);
+        ctx.drawImage(imgEl,0,0,50,50);
+        const imgData=ctx.getImageData(0,0,50,50).data;
+        let r=0,g=0,b=0,count=0;
+        for(let i=0;i<imgData.length;i+=20){
+            if(imgData[i+3]>200){
+                r+=imgData[i];g+=imgData[i+1];b+=imgData[i+2];count++;
+            }
+        }
+        if(count>0){
+            r=Math.floor(r/count);g=Math.floor(g/count);b=Math.floor(b/count);
+            updateWaveColors(r,g,b);
+        }
+    }catch(e){}
+}
+</script>
+
+<script>
 function setArt(url){
     const img=document.getElementById("art"),ph=document.getElementById("artPh");
-    if(!url){img.style.display="none";ph.style.display="flex";lastImg="";return}
+    if(!url){
+        img.style.display="none";
+        ph.style.display="flex";
+        lastImg="";
+        document.getElementById('playerShell').style.setProperty('--bg-glow', 'transparent');
+        return;
+    }
     if(url===lastImg)return;
     lastImg=url;
-    img.onload=()=>{img.style.display="block";ph.style.display="none"};
-    img.onerror=()=>{img.style.display="none";ph.style.display="flex";lastImg=""};
+    img.crossOrigin="Anonymous";
+    img.onload=()=>{
+        img.style.display="block";
+        ph.style.display="none";
+        extractColorsFromImage(img);
+    };
+    img.onerror=()=>{
+        img.removeAttribute('crossOrigin');
+        img.onload=null;
+        img.onerror=()=>{
+            img.style.display="none";
+            ph.style.display="flex";
+            lastImg="";
+            document.getElementById('playerShell').style.setProperty('--bg-glow', 'transparent');
+        };
+        img.src=url;
+    };
     img.src=url;
+}
+function updateArtistText(text){
+    const el=document.getElementById("artist");
+    const win=document.getElementById("marqueeWindow");
+    el.textContent=text||"";
+    el.style.animation="none";
+    el.style.paddingLeft="0";
+    if(el.offsetWidth>win.offsetWidth){
+        el.style.paddingLeft="100%";
+        const duration=Math.max(5,el.offsetWidth/30);
+        el.style.animation=`marquee ${duration}s linear infinite`;
+    }
+}
+function paintVol(){
+    const vFill=document.getElementById("volFill");
+    const vPath=document.querySelector("#svgVol path");
+    if(isMuted){
+        vFill.style.width="0%";
+        vPath.setAttribute("d",volMute);
+    }else{
+        vFill.style.width=(currentVolume*100)+"%";
+        if(currentVolume===0) vPath.setAttribute("d",volMute);
+        else if(currentVolume<0.4) vPath.setAttribute("d",volLow);
+        else vPath.setAttribute("d",volHigh);
+    }
 }
 function paint(){
     const r=total>0?Math.min(1,pos/total):0;
@@ -103,9 +241,9 @@ function paint(){
     document.getElementById("tTot").textContent=fmt(total);
 }
 function updateWindowBounds(){
-    let targetW=Math.floor(480*baseScale),targetH=Math.floor((drawerOpen?440:110)*baseScale);
+    let targetW=Math.floor(480*baseScale),targetH=Math.floor((drawerOpen?440:126)*baseScale);
     document.getElementById("playerShell").style.width=`${Math.floor(450*baseScale)}px`;
-    document.getElementById("playerShell").style.height=`${Math.floor(80*baseScale)}px`;
+    document.getElementById("playerShell").style.height=`${Math.floor(106*baseScale)}px`;
     document.getElementById("extendedDrawer").style.width=`${Math.floor(450*baseScale)}px`;
     window.electronAPI.resizeWindow({width:targetW,height:targetH});
 }
@@ -138,8 +276,7 @@ document.getElementById('islandWaves').addEventListener('click',()=>{
     else dr.classList.remove("open");
     updateWindowBounds();
 });
-document.getElementById('art').addEventListener('click',()=>{baseScale=baseScale===1.0?1.25:(baseScale===1.25?0.85:1.0);updateWindowBounds()});
-document.getElementById('artPh').addEventListener('click',()=>{baseScale=baseScale===1.0?1.25:(baseScale===1.25?0.85:1.0);updateWindowBounds()});
+document.getElementById('artAction').addEventListener('click',()=>{baseScale=baseScale===1.0?1.25:(baseScale===1.25?0.85:1.0);updateWindowBounds()});
 document.getElementById('tabPlaylists').addEventListener('click',e=>{
     document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
     viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
@@ -180,16 +317,39 @@ document.getElementById('progressBg').addEventListener('click',e=>{
     pos=targetSeconds;paint();
     window.electronAPI.sendControl('scrub',targetSeconds);
 });
+document.getElementById('volBg').addEventListener('click',e=>{
+    const rect=e.currentTarget.getBoundingClientRect();
+    const clickX=e.clientX-rect.left;
+    currentVolume=Math.max(0,Math.min(1,clickX/rect.width));
+    isMuted=false;
+    paintVol();
+    window.electronAPI.sendControl('volume',currentVolume);
+});
+document.getElementById('volIcon').addEventListener('click',()=>{
+    isMuted=!isMuted;
+    if(isMuted){
+        savedVolume=currentVolume;
+        window.electronAPI.sendControl('volume',0);
+    }else{
+        currentVolume=savedVolume;
+        window.electronAPI.sendControl('volume',currentVolume);
+    }
+    paintVol();
+});
 window.electronAPI.onSpotifyData(d=>{
     document.getElementById("track").textContent=d.track||"KittyPlayer123";
-    document.getElementById("artist").textContent=d.artist||"No track playing";
+    updateArtistText(d.artist||"No track playing");
     total=Math.max(1,Number(d.duration)||1);
     const incomingPos=Math.max(0,Number(d.position)||0);
     if(!playing||Math.abs(incomingPos-pos)>2)pos=incomingPos;
     playing=d.status==="playing";
-    document.getElementById("btnPP").textContent=playing?"||":"|>";
+    document.querySelector("#svgPP path").setAttribute("d",playing?pausePath:playPath);
     setArt(d.image||"");
     if(d.color) updateWaveColors(d.color.r, d.color.g, d.color.b);
+    if(d.volume!==undefined&&!isMuted){
+        currentVolume=Number(d.volume);
+        paintVol();
+    }
     paint();
     const isAd = d.isAd || (d.track && d.track.toLowerCase().includes("advertisement")) || (d.artist && d.artist.toLowerCase().includes("spotify")) || (d.duration && Number(d.duration) < 35);
     if(d.track && d.track!=="KittyPlayer123" && d.id && !isAd && !recentTracksMemory.some(t=>t.id===d.id)){
@@ -200,6 +360,7 @@ window.electronAPI.onSpotifyData(d=>{
 setInterval(()=>{if(playing&&pos<total){pos=Math.min(total,pos+0.1);paint()}},100);
 const bars=document.querySelectorAll('.wave-bar');
 setInterval(()=>{bars.forEach(bar=>{if(playing){bar.style.height=(Math.floor(Math.random()*18)+4)+'px'}else{bar.style.height='5px'}bar.style.background=currentGradient})},140);
+paintVol();
 </script>
 </body>
 </html>
