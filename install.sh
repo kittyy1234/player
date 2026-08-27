@@ -94,57 +94,20 @@ spinner_stop ok "Node ready"
 spinner_start "installing dependencies..."
 "$NPM_BIN" install --silent > /dev/null 2>&1 || "$NPM_BIN" install > /dev/null 2>&1
 spinner_stop ok "dependencies installed"
-ELECTRON_BIN="$INSTALL_DIR/KittyPlayer123/node_modules/.bin/electron"
-if [[ ! -x "$ELECTRON_BIN" ]]; then
-    spinner_stop fail "electron binary missing after install"
+mkdir -p build
+cp Icon.png build/icon.png 2>/dev/null || true
+spinner_start "building KittyPlayer123.app..."
+"$NPM_BIN" run build > /dev/null 2>&1 || npx electron-builder --mac --dir > /dev/null 2>&1
+BUILT_APP=$(find "$INSTALL_DIR/KittyPlayer123/dist" -name "*.app" 2>/dev/null | head -1)
+if [[ -z "$BUILT_APP" || ! -d "$BUILT_APP" ]]; then
+    spinner_stop fail "build failed"
     exit 1
 fi
-spinner_start "creating KittyPlayer123.app..."
 rm -rf "$APP_DIR"
-mkdir -p "$APP_DIR/Contents/MacOS"
-mkdir -p "$APP_DIR/Contents/Resources"
-cp Icon.png "$APP_DIR/Contents/Resources/AppIcon.png" 2>/dev/null || true
-cat > "$APP_DIR/Contents/MacOS/KittyPlayer123" << EOF
-#!/bin/bash
-cd "$INSTALL_DIR/KittyPlayer123"
-"$ELECTRON_BIN" .
-EOF
-chmod +x "$APP_DIR/Contents/MacOS/KittyPlayer123"
-cat > "$APP_DIR/Contents/Info.plist" << EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
-<plist version="1.0">
-<dict>
-    <key>CFBundleName</key><string>KittyPlayer123</string>
-    <key>CFBundleDisplayName</key><string>KittyPlayer123</string>
-    <key>CFBundleIdentifier</key><string>com.kittyy1234.KittyPlayer123</string>
-    <key>CFBundleVersion</key><string>1.0.0</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
-    <key>CFBundleExecutable</key><string>KittyPlayer123</string>
-    <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleIconFile</key><string>AppIcon</string>
-    <key>LSMinimumSystemVersion</key><string>11.0</string>
-    <key>LSUIElement</key><true/>
-    <key>NSAppleEventsUsageDescription</key>
-    <string>KittyPlayer123 needs to control Spotify.</string>
-</dict>
-</plist>
-EOF
-if [[ -f Icon.png ]]; then
-    mkdir -p /tmp/KittyIcon.iconset
-    sips -z 16 16     Icon.png --out /tmp/KittyIcon.iconset/icon_16x16.png >/dev/null 2>&1
-    sips -z 32 32     Icon.png --out /tmp/KittyIcon.iconset/icon_16x16@2x.png >/dev/null 2>&1
-    sips -z 32 32     Icon.png --out /tmp/KittyIcon.iconset/icon_32x32.png >/dev/null 2>&1
-    sips -z 64 64     Icon.png --out /tmp/KittyIcon.iconset/icon_32x32@2x.png >/dev/null 2>&1
-    sips -z 128 128   Icon.png --out /tmp/KittyIcon.iconset/icon_128x128.png >/dev/null 2>&1
-    sips -z 256 256   Icon.png --out /tmp/KittyIcon.iconset/icon_128x128@2x.png >/dev/null 2>&1
-    sips -z 256 256   Icon.png --out /tmp/KittyIcon.iconset/icon_256x256.png >/dev/null 2>&1
-    sips -z 512 512   Icon.png --out /tmp/KittyIcon.iconset/icon_256x256@2x.png >/dev/null 2>&1
-    sips -z 512 512   Icon.png --out /tmp/KittyIcon.iconset/icon_512x512.png >/dev/null 2>&1
-    sips -z 1024 1024 Icon.png --out /tmp/KittyIcon.iconset/icon_512x512@2x.png >/dev/null 2>&1
-    iconutil -c icns /tmp/KittyIcon.iconset -o "$APP_DIR/Contents/Resources/AppIcon.icns" 2>/dev/null || true
-    rm -rf /tmp/KittyIcon.iconset
-fi
+cp -R "$BUILT_APP" "$APP_DIR"
+xattr -cr "$APP_DIR" 2>/dev/null || true
+xattr -d com.apple.quarantine "$APP_DIR" 2>/dev/null || true
+codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || true
 spinner_stop ok "KittyPlayer123.app created"
 log "✔  installed to /Applications/KittyPlayer123.app"
 open -R "$APP_DIR"
