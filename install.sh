@@ -65,7 +65,7 @@ fi
 
 INSTALL_DIR="$HOME/.KittyPlayer123"
 APP_DIR="/Applications/KittyPlayer123.app"
-REPO_RAW="https://raw.githubusercontent.com/kitty1234/player/main"
+REPO_RAW="https://raw.githubusercontent.com/kittyy1234/player/main"
 NODE_VERSION="20.17.0"
 NODE_DIST="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
 NODE_URL="https://nodejs.org{NODE_VERSION}/${NODE_DIST}.tar.gz"
