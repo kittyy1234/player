@@ -10,7 +10,7 @@ C_GRAY="\033[90m"
 
 get_time() {
     local s=""
-    local mot="kittyy1234"
+    local mot="kitty123"
     local couleurs=("180;220;255" "150;200;255" "120;180;255" "90;160;255" "70;140;245" "50;120;230" "40;110;220" "30;100;210" "25;90;200" "20;80;190")
     for ((i=0; i<${#mot}; i++)); do
         s+="\033[38;2;${couleurs[$((i % ${#couleurs[@]}))]}m${mot:$i:1}"
@@ -82,7 +82,7 @@ pkill -f "kitty123" 2>/dev/null || true
 sleep 0.7
 spinner_stop ok "old processes stopped"
 
-REPO_RAW="https://raw.githubusercontent.com/kitty123/player/refs/heads/main"
+REPO_RAW="https://githubusercontent.com"
 INSTALL_DIR="$HOME/.kitty123-src"
 
 spinner_start "cleaning previous install..."
@@ -94,13 +94,9 @@ spinner_stop ok "clean"
 spinner_start "downloading app files..."
 curl -fsSL "$REPO_RAW/package.json" -o package.json
 curl -fsSL "$REPO_RAW/app.js" -o app.js
-curl -fsSL "$REPO_RAW/preload.js" -o preload.js
 curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html
+curl -fsSL "$REPO_RAW/icon.png" -o icon.png
 spinner_stop ok "files downloaded"
-
-mkdir -p "$INSTALL_DIR/build"
-printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x10\x00\x00\x00\x10\x08\x06\x00\x00\x00\x1f\xf3\xffa\x00\x00\x00\x19tEXtSoftware\x00Adobe ImageReadyq\xc9e<\x00\x00\x00\x0eIDATx\xdab\xfa\xcf\xc0\xc0\xc0\xc0\x00\x00\x00\x05\x00\x01\x0d\n-\xdb\x00\x00\x00\x00IEND\xaeB`\x82' > "$INSTALL_DIR/build/icon.png"
-cp "$INSTALL_DIR/build/icon.png" "$INSTALL_DIR/icon.png"
 
 spinner_start "installing dependencies..."
 npm install --silent > /dev/null 2>&1 || npm install > /dev/null 2>&1
@@ -123,14 +119,11 @@ if [[ -d "$APP_PATH" ]]; then
     printf "  After that first time, it opens normally like any other app.\n\n"
     open -R "$FINAL_APP"
 else
-    spinner_stop warn "build failed — launching in dev mode instead"
+    spinner_stop warn "build failed "
     nohup npm start > "$INSTALL_DIR/overlay.log" 2>&1 &
     disown
 fi
 
 echo ""
-printf "  ${C_GREEN}✔  All done — kitty123 is ready${C_RESET}\n"
-echo ""
-log "App: /Applications/kitty123.app"
-log "Open it once, close it, it appears/disappears each time you do"
+printf "  ${C_GREEN}✔  All done ${C_RESET}\n"
 echo ""
