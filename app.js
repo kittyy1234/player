@@ -1,4 +1,3 @@
-
 const { app, BrowserWindow, screen, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -8,7 +7,17 @@ const { exec } = require('child_process');
 const fetch = require('node-fetch');
 const CLIENT_ID = "4119f479e60d4a049e3d384ec366dc65";
 const REDIRECT_URI = "http://127.0.0.1:8888/callback";
-const SCOPES = "playlist-read-private playlist-read-collaborative user-library-read user-read-email user-read-private";
+// Extra scopes so we can start playback via Web API (no focus steal) + read playlists
+const SCOPES = [
+  "playlist-read-private",
+  "playlist-read-collaborative",
+  "user-library-read",
+  "user-read-email",
+  "user-read-private",
+  "user-modify-playback-state",
+  "user-read-playback-state",
+  "user-read-currently-playing",
+].join(" ");
 const TOKEN_PATH = path.join(app.getPath('userData'), 'token.json');
 const PLAYLISTS_PATH = path.join(app.getPath('userData'), 'playlists.json');
 let win;
@@ -66,8 +75,14 @@ function runLoginFlow() {
     });
     server.listen(8888, () => {
       const params = new URLSearchParams({
-        client_id: CLIENT_ID, response_type: 'code', redirect_uri: REDIRECT_URI,
-        code_challenge_method: 'S256', code_challenge: challenge, scope: SCOPES,
+        client_id: CLIENT_ID,
+        response_type: 'code',
+        redirect_uri: REDIRECT_URI,
+        code_challenge_method: 'S256',
+        code_challenge: challenge,
+        scope: SCOPES,
+        // Force consent so new scopes (playback) are granted on reconnect
+        prompt: 'consent',
       });
       exec(`open "https://accounts.spotify.com/authorize?${params.toString()}"`);
     });
@@ -86,18 +101,105 @@ async function getValidAccessToken() {
 }
 async function spotifyGet(endpoint) {
   const token = await getValidAccessToken();
-  if (!token) return null;
+  if (!token) {
+    console.log('[KittyPlayer] spotifyGet: no token for', endpoint);
+    return null;
+  }
   const res = await fetch('https://api.spotify.com/v1' + endpoint, {
     headers: { Authorization: 'Bearer ' + token },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    console.log('[KittyPlayer] spotifyGet failed', res.status, endpoint, body.slice(0, 200));
+    return null;
+  }
   return res.json();
+}
+
+async function spotifyPut(endpoint, body) {
+  const token = await getValidAccessToken();
+  if (!token) return { ok: false, status: 401 };
+  const res = await fetch('https://api.spotify.com/v1' + endpoint, {
+    method: 'PUT',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { ok: res.ok || res.status === 204, status: res.status };
 }
 function loadCachedPlaylists() {
   try { return JSON.parse(fs.readFileSync(PLAYLISTS_PATH, 'utf8')); } catch (e) { return null; }
 }
 function savePlaylists(playlists) {
   fs.writeFileSync(PLAYLISTS_PATH, JSON.stringify(playlists));
+}
+function sendAuthStatus(connected) {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('auth-status', { connected: !!connected });
+  }
+}
+async function fetchAllPlaylists() {
+  let all = [];
+  let url = '/me/playlists?limit=50';
+  let pages = 0;
+  while (url && pages < 10) {
+    pages++;
+    const res = await spotifyGet(url);
+    if (!res) {
+      console.log('[KittyPlayer] fetchAllPlaylists: null response on page', pages);
+      break;
+    }
+    if (!Array.isArray(res.items)) {
+      console.log('[KittyPlayer] fetchAllPlaylists: no items array', JSON.stringify(res).slice(0, 200));
+      break;
+    }
+    all = all.concat(res.items.map((p) => ({
+      title: p.name || 'Untitled',
+      id: p.uri || p.id,
+      isPlaylist: true,
+      image: (p.images && p.images[0]) ? p.images[0].url : null,
+      artist: (p.tracks && typeof p.tracks.total === 'number') ? `${p.tracks.total} tracks` : '',
+    })));
+    url = res.next ? res.next.replace('https://api.spotify.com/v1', '') : null;
+  }
+  console.log('[KittyPlayer] fetchAllPlaylists got', all.length, 'playlists');
+  if (all.length > 0) savePlaylists(all);
+  return all;
+}
+
+/** Start playback via Web API so Spotify window is NOT activated (stays in Roblox etc.) */
+async function playViaWebApi(uri) {
+  if (!uri) return false;
+  // context_uri for playlists/albums, uris[] for single tracks
+  let body;
+  if (String(uri).includes(':playlist:') || String(uri).includes(':album:')) {
+    body = { context_uri: uri };
+  } else {
+    body = { uris: [uri] };
+  }
+  let result = await spotifyPut('/me/player/play', body);
+  if (result.ok) {
+    console.log('[KittyPlayer] Web API play OK');
+    return true;
+  }
+  // 404 = no active device. Quietly launch Spotify (does not bring to front like activate)
+  // then retry once after a short delay.
+  if (result.status === 404) {
+    console.log('[KittyPlayer] No active device – launching Spotify quietly and retrying');
+    await new Promise((resolve) => {
+      exec(`osascript -e 'tell application "Spotify" to launch'`, () => resolve());
+    });
+    await new Promise((r) => setTimeout(r, 1200));
+    result = await spotifyPut('/me/player/play', body);
+    if (result.ok) {
+      console.log('[KittyPlayer] Web API play OK after launch');
+      return true;
+    }
+  }
+  console.log('[KittyPlayer] Web API play failed status', result.status);
+  return false;
 }
 async function extractDominantColor(imageUrl) {
   if (!imageUrl) return null;
@@ -124,27 +226,32 @@ async function extractDominantColor(imageUrl) {
 }
 function playUriQuiet(uri) {
   // Play without stealing focus (keeps Roblox / current app in front)
+  // Write script to temp file to avoid shell-quoting issues
   const script = `
-    tell application "System Events"
-      set frontApp to name of first application process whose frontmost is true
-    end tell
-    tell application "Spotify"
-      play track "${uri}"
-    end tell
-    delay 0.08
-    tell application "System Events"
-      try
-        set frontmost of process frontApp to true
-      end try
-    end tell
-    delay 0.12
-    tell application "System Events"
-      try
-        set frontmost of process frontApp to true
-      end try
-    end tell
-  `;
-  exec(`osascript -e '${script.replace(/'/g, "'\"'\"'")}'`);
+tell application "System Events"
+  set frontApp to name of first application process whose frontmost is true
+end tell
+tell application "Spotify"
+  play track "${uri}"
+end tell
+delay 0.1
+tell application "System Events"
+  try
+    set frontmost of process frontApp to true
+  end try
+end tell
+delay 0.15
+tell application "System Events"
+  try
+    set frontmost of process frontApp to true
+  end try
+end tell
+`;
+  const tmp = path.join(app.getPath('temp'), 'kittyplayer-play.scpt');
+  fs.writeFileSync(tmp, script);
+  exec(`osascript "${tmp}"`, () => {
+    try { fs.unlinkSync(tmp); } catch (e) {}
+  });
 }
 function createOverlayWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
@@ -248,49 +355,38 @@ ipcMain.on('spotify-control', async (event, data) => {
   }
   // Manual login / reconnect from the drawer button
   if (data.action === 'login') {
-    runLoginFlow().then(async () => {
-      try {
-        let all = [];
-        let url = '/me/playlists?limit=50';
-        while (url) {
-          const res = await spotifyGet(url);
-          if (!res || !res.items) break;
-          all = all.concat(res.items.map((p) => ({
-            title: p.name, id: p.uri, isPlaylist: true,
-            image: (p.images && p.images[0]) ? p.images[0].url : null,
-            artist: p.tracks ? `${p.tracks.total} tracks` : '',
-          })));
-          url = res.next ? res.next.replace('https://api.spotify.com/v1', '') : null;
+    runLoginFlow()
+      .then(async () => {
+        sendAuthStatus(true);
+        try {
+          const all = await fetchAllPlaylists();
+          if (win && !win.isDestroyed()) win.webContents.send('playlists-reply', all);
+        } catch (e) {
+          if (win && !win.isDestroyed()) win.webContents.send('playlists-reply', []);
         }
-        if (all.length > 0) savePlaylists(all);
-        if (win && !win.isDestroyed()) win.webContents.send('playlists-reply', all);
-      } catch (e) {}
-    }).catch(() => {});
+      })
+      .catch(() => {
+        sendAuthStatus(false);
+      });
     return;
   }
   if (data.action === 'playUri' || data.action === 'playPlaylist') {
-    // playPlaylist comes as a playlist URI – Spotify accepts playlist URIs with "play track"
-    playUriQuiet(data.value);
+    // Prefer Web API (no focus steal). Fall back to quiet AppleScript if no active device.
+    const uri = data.value;
+    playViaWebApi(uri).then((ok) => {
+      if (!ok) playUriQuiet(uri);
+    });
     return;
   }
   if (data.action === 'getRealPlaylists') {
     const cached = loadCachedPlaylists();
     if (cached && cached.length > 0) win.webContents.send('playlists-reply', cached);
+    // Always report whether we think we're logged in
+    const token = await getValidAccessToken();
+    sendAuthStatus(!!token);
     try {
-      let all = [];
-      let url = '/me/playlists?limit=50';
-      while (url) {
-        const res = await spotifyGet(url);
-        if (!res || !res.items) break;
-        all = all.concat(res.items.map((p) => ({
-          title: p.name, id: p.uri, isPlaylist: true,
-          image: (p.images && p.images[0]) ? p.images[0].url : null,
-          artist: p.tracks ? `${p.tracks.total} tracks` : '',
-        })));
-        url = res.next ? res.next.replace('https://api.spotify.com/v1', '') : null;
-      }
-      if (all.length > 0) savePlaylists(all);
-      win.webContents.send('playlists-reply', all);
+      const all = await fetchAllPlaylists();
+      win.webContents.send('playlists-reply', all.length ? all : (cached || []));
     } catch (e) {
       if (!cached) win.webContents.send('playlists-reply', []);
     }
@@ -354,6 +450,17 @@ app.whenReady().then(async () => {
   }
   createOverlayWindow();
   createTrayMenu();
+  // After window exists, report auth + try to preload playlists
+  setTimeout(async () => {
+    const token = await getValidAccessToken();
+    sendAuthStatus(!!token);
+    if (token) {
+      try {
+        const all = await fetchAllPlaylists();
+        if (win && !win.isDestroyed()) win.webContents.send('playlists-reply', all);
+      } catch (e) {}
+    }
+  }, 800);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createOverlayWindow();
   });
