@@ -53,13 +53,22 @@ trap cleanup EXIT INT TERM
 banner
 spinner_start "killing past instances..."
 pkill -f "KittyPlayer123" 2>/dev/null || true
-pkill -f "electron.*KittyPlayer123" 2>/dev/null || true
 sleep 0.5
 spinner_stop ok "killed past instances"
 
+ARCH=$(uname -m)
+if [[ "$ARCH" == "arm64" ]]; then
+    NODE_ARCH="arm64"
+else
+    NODE_ARCH="x64"
+fi
+
 INSTALL_DIR="$HOME/.KittyPlayer123"
 APP_DIR="/Applications/KittyPlayer123.app"
-REPO_RAW="https://raw.githubusercontent.com/kittyy1234/player/main"
+REPO_RAW="https://githubusercontent.com"
+NODE_VERSION="20.17.0"
+NODE_DIST="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
+NODE_URL="https://nodejs.org{NODE_VERSION}/${NODE_DIST}.tar.gz"
 
 spinner_start "cleaning..."
 rm -rf "$INSTALL_DIR"
@@ -68,17 +77,29 @@ cd "$INSTALL_DIR"
 spinner_stop ok "cleaned"
 
 spinner_start "downloading app files..."
-curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html || { spinner_stop fail "download failed"; exit 1; }
+curl -fsSL "$REPO_RAW/package.json" -o package.json || { spinner_stop fail "download failed"; exit 1; }
 curl -fsSL "$REPO_RAW/app.js" -o app.js || { spinner_stop fail "download failed"; exit 1; }
+curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html || { spinner_stop fail "download failed"; exit 1; }
+curl -fsSL "$REPO_RAW/preload.js" -o preload.js || { spinner_stop fail "download failed"; exit 1; }
 curl -fsSL "$REPO_RAW/Icon.png" -o Icon.png || curl -fsSL "$REPO_RAW/icon.png" -o Icon.png || true
 spinner_stop ok "app files ready"
 
 spinner_start "setting up Node..."
-sleep 0.4
+if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
+    NODE_BIN=$(command -v node)
+    NPM_BIN=$(command -v npm)
+else
+    curl -fsSL "$NODE_URL" -o node.tar.gz || { spinner_stop fail "Node download failed"; exit 1; }
+    tar -xzf node.tar.gz
+    rm node.tar.gz
+    NODE_BIN="$INSTALL_DIR/$NODE_DIST/bin/node"
+    NPM_BIN="$INSTALL_DIR/$NODE_DIST/bin/npm"
+    export PATH="$INSTALL_DIR/$NODE_DIST/bin:$PATH"
+fi
 spinner_stop ok "Node ready"
 
 spinner_start "installing dependencies..."
-sleep 0.6
+"$NPM_BIN" install --silent > /dev/null 2>&1 || "$NPM_BIN" install > /dev/null 2>&1
 spinner_stop ok "dependencies installed"
 
 spinner_start "creating KittyPlayer123.app..."
@@ -88,22 +109,26 @@ mkdir -p "$APP_DIR/Contents/Resources"
 
 cp Icon.png "$APP_DIR/Contents/Resources/AppIcon.png" 2>/dev/null || true
 
-cat > "$APP_DIR/Contents/MacOS/KittyPlayer123" << 'EOF'
+cat > "$APP_DIR/Contents/MacOS/KittyPlayer123" << EOF
 #!/bin/bash
-TARGET_FILE="$HOME/.KittyPlayer123/overlay.html"
+cd "$INSTALL_DIR"
+export PATH="$(dirname "$NODE_BIN"):\$PATH"
+# Run your backend logic script using standard Node
+"$NODE_BIN" app.js &
+# Instantly open your overlay UI in custom desktop App Mode 
 if [ -d "/Applications/Google Chrome.app" ]; then
-    exec "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="file://$TARGET_FILE"
+    exec "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="file://$INSTALL_DIR/overlay.html"
 elif [ -d "/Applications/Microsoft Edge.app" ]; then
-    exec "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" --app="file://$TARGET_FILE"
+    exec "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" --app="file://$INSTALL_DIR/overlay.html"
 else
-    open "file://$TARGET_FILE"
+    open "file://$INSTALL_DIR/overlay.html"
 fi
 EOF
 chmod +x "$APP_DIR/Contents/MacOS/KittyPlayer123"
 
 cat > "$APP_DIR/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
 <plist version="1.0">
 <dict>
     <key>CFBundleName</key><string>KittyPlayer123</string>
