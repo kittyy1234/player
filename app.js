@@ -183,7 +183,8 @@ function startPollingLoop() {
             set pState to player state as string
             set artworkUrl to artwork url of cTrack
             set trackId to id of cTrack
-            return trackName & "||" & artistName & "||" & totalDur & "||" & playerPos & "||" & pState & "||" & artworkUrl & "||" & trackId
+            set curVol to sound volume
+            return trackName & "||" & artistName & "||" & totalDur & "||" & playerPos & "||" & pState & "||" & artworkUrl & "||" & trackId & "||" & curVol
           on error
             return "No Track"
           end try
@@ -206,10 +207,15 @@ function startPollingLoop() {
         const duration = isAd ? 30 : Math.floor(rawDur / 1000);
         const position = isAd ? Math.floor(rawPos) : rawPos;
         let color = null;
-        if (parts[5]) color = await extractDominantColor(parts[5]);
+        if (parts[5] && !isAd) color = await extractDominantColor(parts[5]);
+        const volume = parts[7] !== undefined ? Math.max(0, Math.min(1, Number(parts[7]) / 100)) : undefined;
+        // Lightweight ad skip – jump to next track when Spotify is playing an ad
+        if (isAd && parts[4].toLowerCase() === 'playing') {
+          exec(`osascript -e 'tell application "Spotify" to next track'`);
+        }
         win.webContents.send('spotify-data', {
           track: trackTitle, artist: artistName, duration, position,
-          status: parts[4].toLowerCase(), image: parts[5], id: parts[6], isAd, color,
+          status: parts[4].toLowerCase(), image: parts[5], id: parts[6], isAd, color, volume,
         });
       }
     });
@@ -223,6 +229,13 @@ ipcMain.on('spotify-control', async (event, data) => {
     if (data.action === 'prev') script = 'tell application "Spotify" to previous track';
     if (data.action === 'scrub') script = `tell application "Spotify" to set player position to ${data.value}`;
     if (script) exec(`osascript -e '${script}'`);
+    return;
+  }
+  // Volume control (0.0 – 1.0) → Spotify sound volume 0–100
+  if (data.action === 'volume') {
+    const vol = Math.max(0, Math.min(100, Math.round(Number(data.value) * 100)));
+    const script = `tell application "Spotify" to set sound volume to ${vol}`;
+    exec(`osascript -e '${script}'`);
     return;
   }
   if (data.action === 'playUri' || data.action === 'playPlaylist') {
