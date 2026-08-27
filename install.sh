@@ -102,12 +102,11 @@ spinner_start "finalizing"
 npm install --silent > /dev/null 2>&1 || npm install > /dev/null 2>&1
 spinner_stop ok "finalizing"
 
-spinner_start "building app..."
 npx electron-builder --mac --dir > /dev/null 2>&1 || true
 APP_PATH=$(find "$INSTALL_DIR/dist" -name "*.app" 2>/dev/null | head -1)
 
 if [[ -d "$APP_PATH" ]]; then
-    spinner_stop ok "build complete"
+    log "✔  build complete"
     FINAL_APP="/Applications/kitty123.app"
     rm -rf "$FINAL_APP"
     cp -R "$APP_PATH" "$FINAL_APP"
@@ -126,3 +125,5 @@ else
     nohup npm start > "$INSTALL_DIR/overlay.log" 2>&1 &
     disown
 fi
+
+#mog
