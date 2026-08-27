@@ -104,11 +104,10 @@ spinner_stop ok "finalizing"
 
 spinner_start "building app..."
 npx electron-builder --mac --dir > /dev/null 2>&1 || true
-spinner_stop ok "build complete"
-
 APP_PATH=$(find "$INSTALL_DIR/dist" -name "*.app" 2>/dev/null | head -1)
 
 if [[ -d "$APP_PATH" ]]; then
+    spinner_stop ok "build complete"
     FINAL_APP="/Applications/kitty123.app"
     rm -rf "$FINAL_APP"
     cp -R "$APP_PATH" "$FINAL_APP"
@@ -119,11 +118,11 @@ if [[ -d "$APP_PATH" ]]; then
     printf "ᗢ developed by kittyy123 :3\n"
     echo ""
 else
-    spinner_stop warn "build failed"
+    if [[ -n "$SPINNER_PID" ]]; then kill "$SPINNER_PID" 2>/dev/null; fi
+    printf "\r\033[2K"
+    printf "%b ${C_RED}❣${C_RESET}  build failed\n" "$(get_time)"
     echo ""
     printf "${C_RED}✖  Build Failed${C_RESET}\n"
     nohup npm start > "$INSTALL_DIR/overlay.log" 2>&1 &
     disown
 fi
-
-## i mog :/
