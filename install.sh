@@ -49,33 +49,28 @@ spinner_stop() {
 }
 cleanup() { [[ -n "$SPINNER_PID" ]] && kill "$SPINNER_PID" 2>/dev/null; printf "\033[?7h\033[?25h"; }
 trap cleanup EXIT INT TERM
-
 banner
 spinner_start "killing past instances..."
 pkill -f "KittyPlayer123" 2>/dev/null || true
 sleep 0.5
 spinner_stop ok "killed past instances"
-
 ARCH=$(uname -m)
 if [[ "$ARCH" == "arm64" ]]; then
     NODE_ARCH="arm64"
 else
     NODE_ARCH="x64"
 fi
-
 INSTALL_DIR="$HOME/.KittyPlayer123"
 APP_DIR="/Applications/KittyPlayer123.app"
 REPO_RAW="https://raw.githubusercontent.com/kittyy1234/player/main"
 NODE_VERSION="20.17.0"
 NODE_DIST="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
-NODE_URL="https://nodejs.org{NODE_VERSION}/${NODE_DIST}.tar.gz"
-
+NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_DIST}.tar.gz"
 spinner_start "cleaning..."
 rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR"
-cd "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/KittyPlayer123"
+cd "$INSTALL_DIR/KittyPlayer123"
 spinner_stop ok "cleaned"
-
 spinner_start "downloading app files..."
 curl -fsSL "$REPO_RAW/package.json" -o package.json || { spinner_stop fail "download failed"; exit 1; }
 curl -fsSL "$REPO_RAW/app.js" -o app.js || { spinner_stop fail "download failed"; exit 1; }
@@ -83,7 +78,6 @@ curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html || { spinner_stop fail "down
 curl -fsSL "$REPO_RAW/preload.js" -o preload.js || { spinner_stop fail "download failed"; exit 1; }
 curl -fsSL "$REPO_RAW/Icon.png" -o Icon.png || curl -fsSL "$REPO_RAW/icon.png" -o Icon.png || true
 spinner_stop ok "app files ready"
-
 spinner_start "setting up Node..."
 if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
     NODE_BIN=$(command -v node)
@@ -92,38 +86,30 @@ else
     curl -fsSL "$NODE_URL" -o node.tar.gz || { spinner_stop fail "Node download failed"; exit 1; }
     tar -xzf node.tar.gz
     rm node.tar.gz
-    NODE_BIN="$INSTALL_DIR/$NODE_DIST/bin/node"
-    NPM_BIN="$INSTALL_DIR/$NODE_DIST/bin/npm"
-    export PATH="$INSTALL_DIR/$NODE_DIST/bin:$PATH"
+    NODE_BIN="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin/node"
+    NPM_BIN="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin/npm"
+    export PATH="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin:$PATH"
 fi
 spinner_stop ok "Node ready"
-
 spinner_start "installing dependencies..."
 "$NPM_BIN" install --silent > /dev/null 2>&1 || "$NPM_BIN" install > /dev/null 2>&1
 spinner_stop ok "dependencies installed"
-
+ELECTRON_BIN="$INSTALL_DIR/KittyPlayer123/node_modules/.bin/electron"
+if [[ ! -x "$ELECTRON_BIN" ]]; then
+    spinner_stop fail "electron binary missing after install"
+    exit 1
+fi
 spinner_start "creating KittyPlayer123.app..."
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
-
 cp Icon.png "$APP_DIR/Contents/Resources/AppIcon.png" 2>/dev/null || true
-
 cat > "$APP_DIR/Contents/MacOS/KittyPlayer123" << EOF
 #!/bin/bash
-cd "$INSTALL_DIR"
-export PATH="$(dirname "$NODE_BIN"):\$PATH"
-"$NODE_BIN" app.js &
-if [ -d "/Applications/Google Chrome.app" ]; then
-    exec "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="file://$INSTALL_DIR/overlay.html"
-elif [ -d "/Applications/Microsoft Edge.app" ]; then
-    exec "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge" --app="file://$INSTALL_DIR/overlay.html"
-else
-    open "file://$INSTALL_DIR/overlay.html"
-fi
+cd "$INSTALL_DIR/KittyPlayer123"
+"$ELECTRON_BIN" .
 EOF
 chmod +x "$APP_DIR/Contents/MacOS/KittyPlayer123"
-
 cat > "$APP_DIR/Contents/Info.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://apple.com">
@@ -144,7 +130,6 @@ cat > "$APP_DIR/Contents/Info.plist" << EOF
 </dict>
 </plist>
 EOF
-
 if [[ -f Icon.png ]]; then
     mkdir -p /tmp/KittyIcon.iconset
     sips -z 16 16     Icon.png --out /tmp/KittyIcon.iconset/icon_16x16.png >/dev/null 2>&1
@@ -160,9 +145,7 @@ if [[ -f Icon.png ]]; then
     iconutil -c icns /tmp/KittyIcon.iconset -o "$APP_DIR/Contents/Resources/AppIcon.icns" 2>/dev/null || true
     rm -rf /tmp/KittyIcon.iconset
 fi
-
 spinner_stop ok "KittyPlayer123.app created"
-
 log "✔  installed to /Applications/KittyPlayer123.app"
 open -R "$APP_DIR"
 echo ""
@@ -170,5 +153,3 @@ printf "${C_GREEN}✔  All done${C_RESET}\n"
 echo ""
 printf "ᗢ KittyPlayer123\n"
 echo ""
-
-#moggg
