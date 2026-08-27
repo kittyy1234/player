@@ -113,9 +113,7 @@ cat > "$APP_DIR/Contents/MacOS/KittyPlayer123" << EOF
 #!/bin/bash
 cd "$INSTALL_DIR"
 export PATH="$(dirname "$NODE_BIN"):\$PATH"
-# Run your backend logic script using standard Node
 "$NODE_BIN" app.js &
-# Instantly open your overlay UI in custom desktop App Mode 
 if [ -d "/Applications/Google Chrome.app" ]; then
     exec "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --app="file://$INSTALL_DIR/overlay.html"
 elif [ -d "/Applications/Microsoft Edge.app" ]; then
@@ -172,3 +170,5 @@ printf "${C_GREEN}✔  All done${C_RESET}\n"
 echo ""
 printf "ᗢ KittyPlayer123\n"
 echo ""
+
+#moggg
