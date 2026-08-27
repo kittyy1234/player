@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>kitty123</title>
+<title>KittyPlayer123</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:100%;height:100%;overflow:hidden;background:transparent !important;background-color:rgba(0,0,0,0) !important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;user-select:none;-webkit-user-select:none}
@@ -15,13 +15,13 @@ body{display:flex;align-items:center;justify-content:center;flex-direction:colum
 .artist{color:rgb(170,170,178);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:55px}
 .row{display:flex;align-items:center;gap:8px;margin-top:8px}
 .btns{-webkit-app-region:no-drag;display:flex;gap:12px;flex-shrink:0;color:#fff;font-size:14px;font-weight:700;cursor:pointer}
-.btns span:hover{color:rgb(30,215,96)}
+.btns span:hover{color:rgb(255,182,193)}
 .progress-wrap{-webkit-app-region:no-drag;flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
 .bar-bg{height:4px;border-radius:2px;background:rgba(255,255,255,.25);position:relative;cursor:pointer}
 .bar-fill{height:100%;width:0%;border-radius:2px;background:#fff;transition:width 0.1s linear}
 .times{display:flex;justify-content:space-between;color:rgb(170,170,178);font-size:10px;font-variant-numeric:tabular-nums}
 .island-waves{-webkit-app-region:no-drag;position:absolute;right:8px;top:6px;display:flex;align-items:flex-end;gap:3px;height:22px;width:48px;justify-content:flex-end;cursor:pointer;z-index:10}
-.wave-bar{width:3px;height:6px;border-radius:2px;transition:height 0.12s ease-in-out,background 0.3s ease;background:linear-gradient(180deg,#78b4ff,#4a90e2,#2a6fd6)}
+.wave-bar{width:3px;height:6px;border-radius:2px;transition:height 0.12s ease-in-out,background 0.3s ease;background:linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a)}
 .drawer{-webkit-app-region:no-drag;width:450px;height:0px;border-radius:18px;background:rgba(16,16,19,.92);border:0px solid rgba(255,255,255,.22);box-shadow:0 12px 40px rgba(0,0,0,.45);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);display:flex;flex-direction:column;overflow:hidden;transition:all 0.25s ease-in-out;opacity:0}
 .drawer.open{height:320px;border:1px solid rgba(255,255,255,.22);opacity:1;padding:12px}
 .search-box{width:100%;padding:8px 12px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;outline:none;font-size:12px;margin-bottom:12px}
@@ -29,7 +29,7 @@ body{display:flex;align-items:center;justify-content:center;flex-direction:colum
 .nav-tabs{display:flex;gap:14px;border-bottom:1px solid rgba(255,255,255,.1);padding-bottom:6px;margin-bottom:10px}
 .tab{color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer}
 .tab.active{color:#fff;border-bottom:2px solid #fff;padding-bottom:4px}
-.back-btn{color:rgb(30,215,96);font-size:11px;cursor:pointer;margin-bottom:6px;display:none;font-weight:bold}
+.back-btn{color:rgb(255,182,193);font-size:11px;cursor:pointer;margin-bottom:6px;display:none;font-weight:bold}
 .list-container{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
 .list-item{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;cursor:pointer}
 .list-item:hover{background:rgba(255,255,255,.05)}
@@ -38,164 +38,164 @@ body{display:flex;align-items:center;justify-content:center;flex-direction:colum
 .list-info{display:flex;flex-direction:column;min-width:0;flex:1}
 .list-title{color:#fff;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .list-sub{color:rgba(255,255,255,.5);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.play-btn{-webkit-app-region:no-drag;color:rgb(30,215,96);font-size:14px;font-weight:bold;padding:4px 8px;cursor:pointer;border-radius:4px;flex-shrink:0}
-.play-btn:hover{background:rgba(30,215,96,.15)}
+.play-btn{-webkit-app-region:no-drag;color:rgb(255,182,193);font-size:14px;font-weight:bold;padding:4px 8px;cursor:pointer;border-radius:4px;flex-shrink:0}
+.play-btn:hover{background:rgba(255,182,193,.15)}
 .search-hint{color:rgba(255,255,255,.4);font-size:11px;text-align:center;padding:20px 10px}
 </style>
 </head>
 <body>
 <div class="shell" id="playerShell">
-  <img class="art" id="art" alt="" style="display:none"/>
-  <div class="artph" id="artPh">♪</div>
-  <div class="meta">
-    <div class="track" id="track">Connecting...</div>
-    <div class="artist" id="artist"></div>
-    <div class="island-waves" id="islandWaves" title="Click to expand">
-      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
-    </div>
-    <div class="row">
-      <div class="btns">
-        <span id="btnPrev">|&lt;</span>
-        <span id="btnPP">||</span>
-        <span id="btnNext">&gt;|</span>
-      </div>
-      <div class="progress-wrap">
-        <div class="bar-bg" id="progressBg"><div class="bar-fill" id="fill"></div></div>
-        <div class="times"><span id="tCur">0:00</span><span id="tTot">0:00</span></div>
-      </div>
-    </div>
-  </div>
+  <img class="art" id="art" alt="" style="display:none"/>
+  <div class="artph" id="artPh">♪</div>
+  <div class="meta">
+    <div class="track" id="track">Connecting...</div>
+    <div class="artist" id="artist"></div>
+    <div class="island-waves" id="islandWaves" title="Click to expand">
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+    </div>
+    <div class="row">
+      <div class="btns">
+        <span id="btnPrev">|&lt;</span>
+        <span id="btnPP">||</span>
+        <span id="btnNext">&gt;|</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="bar-bg" id="progressBg"><div class="bar-fill" id="fill"></div></div>
+        <div class="times"><span id="tCur">0:00</span><span id="tTot">0:00</span></div>
+      </div>
+    </div>
+  </div>
 </div>
 <div class="drawer" id="extendedDrawer">
-  <input type="text" class="search-box" id="searchBox" placeholder="Search songs or artists..." />
-  <div class="nav-tabs" id="drawerTabs">
-    <div class="tab active" id="tabPlaylists">Playlists</div>
-    <div class="tab" id="tabRecents">Recents</div>
-    <div class="tab" id="tabSearch">Search</div>
-  </div>
-  <div class="back-btn" id="backBtn">&lt; Back to Playlists</div>
-  <div class="list-container" id="listContainer"></div>
+  <input type="text" class="search-box" id="searchBox" placeholder="Search songs or artists..." />
+  <div class="nav-tabs" id="drawerTabs">
+    <div class="tab active" id="tabPlaylists">Playlists</div>
+    <div class="tab" id="tabRecents">Recents</div>
+    <div class="tab" id="tabSearch">Search</div>
+  </div>
+  <div class="back-btn" id="backBtn">&lt; Back to Playlists</div>
+  <div class="list-container" id="listContainer"></div>
 </div>
 <script>
 let total=1,pos=0,playing=false,lastImg="",baseScale=1.0,drawerOpen=false,viewingPlaylist=false;
-let recentTracksMemory=[],loadedPlaylistsMemory=[],currentGradient="linear-gradient(180deg,#78b4ff,#4a90e2,#2a6fd6)";
+let recentTracksMemory=[],loadedPlaylistsMemory=[],currentGradient="linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a)";
 function fmt(s){s=Math.max(0,Math.floor(s+.5));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
 function updateWaveColors(r,g,b){
-  const r2=Math.min(255,r+40),g2=Math.min(255,g+30),b2=Math.min(255,b+50);
-  const r3=Math.max(0,Math.floor(r*0.6)),g3=Math.max(0,Math.floor(g*0.7)),b3=Math.min(255,b+80);
-  currentGradient=`linear-gradient(180deg,rgb(${r},${g},${b}),rgb(${r2},${g2},${b2}),rgb(${r3},${g3},${b3}))`;
-  document.querySelectorAll('.wave-bar').forEach(bar=>{bar.style.background=currentGradient});
+    const r2=Math.min(255,r+40),g2=Math.min(255,g+30),b2=Math.min(255,b+50);
+    const r3=Math.max(0,Math.floor(r*0.6)),g3=Math.max(0,Math.floor(g*0.7)),b3=Math.min(255,b+80);
+    currentGradient=`linear-gradient(180deg,rgb(${r},${g},${b}),rgb(${r2},${g2},${b2}),rgb(${r3},${g3},${b3}))`;
+    document.querySelectorAll('.wave-bar').forEach(bar=>{bar.style.background=currentGradient});
 }
 function setArt(url){
-  const img=document.getElementById("art"),ph=document.getElementById("artPh");
-  if(!url){img.style.display="none";ph.style.display="flex";lastImg="";return}
-  if(url===lastImg)return;
-  lastImg=url;
-  img.onload=()=>{img.style.display="block";ph.style.display="none"};
-  img.onerror=()=>{img.style.display="none";ph.style.display="flex";lastImg=""};
-  img.src=url;
+    const img=document.getElementById("art"),ph=document.getElementById("artPh");
+    if(!url){img.style.display="none";ph.style.display="flex";lastImg="";return}
+    if(url===lastImg)return;
+    lastImg=url;
+    img.onload=()=>{img.style.display="block";ph.style.display="none"};
+    img.onerror=()=>{img.style.display="none";ph.style.display="flex";lastImg=""};
+    img.src=url;
 }
 function paint(){
-  const r=total>0?Math.min(1,pos/total):0;
-  document.getElementById("fill").style.width=(r*100)+"%";
-  document.getElementById("tCur").textContent=fmt(pos);
-  document.getElementById("tTot").textContent=fmt(total);
+    const r=total>0?Math.min(1,pos/total):0;
+    document.getElementById("fill").style.width=(r*100)+"%";
+    document.getElementById("tCur").textContent=fmt(pos);
+    document.getElementById("tTot").textContent=fmt(total);
 }
 function updateWindowBounds(){
-  let targetW=Math.floor(480*baseScale),targetH=Math.floor((drawerOpen?440:110)*baseScale);
-  document.getElementById("playerShell").style.width=`${Math.floor(450*baseScale)}px`;
-  document.getElementById("playerShell").style.height=`${Math.floor(80*baseScale)}px`;
-  document.getElementById("extendedDrawer").style.width=`${Math.floor(450*baseScale)}px`;
-  window.electronAPI.resizeWindow({width:targetW,height:targetH});
+    let targetW=Math.floor(480*baseScale),targetH=Math.floor((drawerOpen?440:110)*baseScale);
+    document.getElementById("playerShell").style.width=`${Math.floor(450*baseScale)}px`;
+    document.getElementById("playerShell").style.height=`${Math.floor(80*baseScale)}px`;
+    document.getElementById("extendedDrawer").style.width=`${Math.floor(450*baseScale)}px`;
+    window.electronAPI.resizeWindow({width:targetW,height:targetH});
 }
 function populateList(items){
-  const container=document.getElementById("listContainer");
-  container.innerHTML="";
-  if(!items||items.length===0){
-    container.innerHTML=`<div class="search-hint">Nothing here yet</div>`;
-    return;
-  }
-  items.forEach(item=>{
-    const row=document.createElement("div");row.className="list-item";
-    let visualMarkup=`<div class="list-thumb-ph">${item.isPlaylist?"📁":"🎵"}</div>`;
-    if(item.image)visualMarkup=`<img class="list-thumb" src="${item.image}" onerror="this.style.display='none'"/>`;
-    let playMarkup=item.isPlaylist?`<div class="play-btn" title="Play playlist">▶</div>`:"";
-    row.innerHTML=`${visualMarkup}<div class="list-info"><div class="list-title">${item.title}</div><div class="list-sub">${item.artist||""}</div></div>${playMarkup}`;
-    const playBtn=row.querySelector('.play-btn');
-    if(playBtn)playBtn.addEventListener('click',e=>{e.stopPropagation();window.electronAPI.sendControl('playPlaylist',item.id)});
-    row.addEventListener('click',()=>{
-      if(item.isPlaylist){viewingPlaylist=true;document.getElementById('drawerTabs').style.display='none';document.getElementById('backBtn').style.display='block';window.electronAPI.sendControl('getPlaylistTracks',item.id)}
-      else if(item.id)window.electronAPI.sendControl('playUri',item.id);
-    });
-    container.appendChild(row);
-  });
+    const container=document.getElementById("listContainer");
+    container.innerHTML="";
+    if(!items||items.length===0){
+        container.innerHTML=`<div class="search-hint">No playlists found<br><br>Try reconnecting your account</div>`;
+        return;
+    }
+    items.forEach(item=>{
+        const row=document.createElement("div");row.className="list-item";
+        let visualMarkup=`<div class="list-thumb-ph">${item.isPlaylist?"📁":"🎵"}</div>`;
+        if(item.image)visualMarkup=`<img class="list-thumb" src="${item.image}" onerror="this.style.display='none'"/>`;
+        let playMarkup=item.isPlaylist?`<div class="play-btn" title="Play playlist">▶</div>`:"";
+        row.innerHTML=`${visualMarkup}<div class="list-info"><div class="list-title">${item.title}</div><div class="list-sub">${item.artist||""}</div></div>${playMarkup}`;
+        const playBtn=row.querySelector('.play-btn');
+        if(playBtn)playBtn.addEventListener('click',e=>{e.stopPropagation();window.electronAPI.sendControl('playPlaylist',item.id)});
+        row.addEventListener('click',()=>{
+            if(item.isPlaylist){viewingPlaylist=true;document.getElementById('drawerTabs').style.display='none';document.getElementById('backBtn').style.display='block';window.electronAPI.sendControl('getPlaylistTracks',item.id)}
+            else if(item.id)window.electronAPI.sendControl('playUri',item.id);
+        });
+        container.appendChild(row);
+    });
 }
 document.getElementById('backBtn').addEventListener('click',()=>{viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';populateList(loadedPlaylistsMemory)});
 document.getElementById('islandWaves').addEventListener('click',()=>{
-  drawerOpen=!drawerOpen;const dr=document.getElementById("extendedDrawer");
-  if(drawerOpen){dr.classList.add("open");if(!viewingPlaylist)window.electronAPI.sendControl('getRealPlaylists')}
-  else dr.classList.remove("open");
-  updateWindowBounds();
+    drawerOpen=!drawerOpen;const dr=document.getElementById("extendedDrawer");
+    if(drawerOpen){dr.classList.add("open");if(!viewingPlaylist)window.electronAPI.sendControl('getRealPlaylists')}
+    else dr.classList.remove("open");
+    updateWindowBounds();
 });
 document.getElementById('art').addEventListener('click',()=>{baseScale=baseScale===1.0?1.25:(baseScale===1.25?0.85:1.0);updateWindowBounds()});
 document.getElementById('artPh').addEventListener('click',()=>{baseScale=baseScale===1.0?1.25:(baseScale===1.25?0.85:1.0);updateWindowBounds()});
 document.getElementById('tabPlaylists').addEventListener('click',e=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
-  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
-  window.electronAPI.sendControl('getRealPlaylists');
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+    viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+    window.electronAPI.sendControl('getRealPlaylists');
 });
 document.getElementById('tabRecents').addEventListener('click',e=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
-  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
-  populateList(recentTracksMemory);
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+    viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+    populateList(recentTracksMemory);
 });
 document.getElementById('tabSearch').addEventListener('click',e=>{
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
-  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
-  document.getElementById('listContainer').innerHTML=`<div class="search-hint">Type a song or artist and press Enter</div>`;
-  document.getElementById('searchBox').focus();
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+    viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+    document.getElementById('listContainer').innerHTML=`<div class="search-hint">Type a song or artist and press Enter</div>`;
+    document.getElementById('searchBox').focus();
 });
 window.electronAPI.onPlaylistsReply(playlists=>{
-  loadedPlaylistsMemory=playlists;
-  if(document.getElementById('tabPlaylists').classList.contains('active')&&!viewingPlaylist)populateList(playlists);
+    loadedPlaylistsMemory=playlists;
+    if(document.getElementById('tabPlaylists').classList.contains('active')&&!viewingPlaylist)populateList(playlists);
 });
 window.electronAPI.onTracksReply(tracks=>{if(viewingPlaylist)populateList(tracks)});
 window.electronAPI.onSearchReply(tracks=>{populateList(tracks)});
 document.getElementById('searchBox').addEventListener('keydown',e=>{
-  if(e.key==='Enter'&&e.target.value.trim()){
-    window.electronAPI.sendControl('search',e.target.value);
-    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-    document.getElementById('tabSearch').classList.add('active');
-  }
+    if(e.key==='Enter'&&e.target.value.trim()){
+        window.electronAPI.sendControl('search',e.target.value);
+        document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+        document.getElementById('tabSearch').classList.add('active');
+    }
 });
 document.getElementById('btnPrev').addEventListener('click',()=>window.electronAPI.sendControl('prev'));
 document.getElementById('btnPP').addEventListener('click',()=>window.electronAPI.sendControl('playpause'));
 document.getElementById('btnNext').addEventListener('click',()=>window.electronAPI.sendControl('next'));
 document.getElementById('progressBg').addEventListener('click',e=>{
-  const rect=e.currentTarget.getBoundingClientRect();
-  const clickX=e.clientX-rect.left;
-  const percentage=Math.max(0,Math.min(1,clickX/rect.width));
-  const targetSeconds=Math.floor(percentage*total);
-  pos=targetSeconds;paint();
-  window.electronAPI.sendControl('scrub',targetSeconds);
+    const rect=e.currentTarget.getBoundingClientRect();
+    const clickX=e.clientX-rect.left;
+    const percentage=Math.max(0,Math.min(1,clickX/rect.width));
+    const targetSeconds=Math.floor(percentage*total);
+    pos=targetSeconds;paint();
+    window.electronAPI.sendControl('scrub',targetSeconds);
 });
 window.electronAPI.onSpotifyData(d=>{
-  document.getElementById("track").textContent=d.track||"kitty123";
-  document.getElementById("artist").textContent=d.artist||"No track playing";
-  total=Math.max(1,Number(d.duration)||1);
-  const incomingPos=Math.max(0,Number(d.position)||0);
-  if(!playing||Math.abs(incomingPos-pos)>2)pos=incomingPos;
-  playing=d.status==="playing";
-  document.getElementById("btnPP").textContent=playing?"||":"|>";
-  setArt(d.image||"");
-  if(d.color) updateWaveColors(d.color.r, d.color.g, d.color.b);
-  paint();
-  const isAd = d.isAd || (d.track && d.track.toLowerCase().includes("advertisement")) || (d.artist && d.artist.toLowerCase().includes("spotify")) || (d.duration && Number(d.duration) < 35);
-  if(d.track && d.track!=="kitty123" && d.id && !isAd && !recentTracksMemory.some(t=>t.id===d.id)){
-    recentTracksMemory.unshift({title:d.track,artist:d.artist,id:d.id,image:d.image});
-    if(recentTracksMemory.length>20)recentTracksMemory.pop();
-  }
+    document.getElementById("track").textContent=d.track||"KittyPlayer123";
+    document.getElementById("artist").textContent=d.artist||"No track playing";
+    total=Math.max(1,Number(d.duration)||1);
+    const incomingPos=Math.max(0,Number(d.position)||0);
+    if(!playing||Math.abs(incomingPos-pos)>2)pos=incomingPos;
+    playing=d.status==="playing";
+    document.getElementById("btnPP").textContent=playing?"||":"|>";
+    setArt(d.image||"");
+    if(d.color) updateWaveColors(d.color.r, d.color.g, d.color.b);
+    paint();
+    const isAd = d.isAd || (d.track && d.track.toLowerCase().includes("advertisement")) || (d.artist && d.artist.toLowerCase().includes("spotify")) || (d.duration && Number(d.duration) < 35);
+    if(d.track && d.track!=="KittyPlayer123" && d.id && !isAd && !recentTracksMemory.some(t=>t.id===d.id)){
+        recentTracksMemory.unshift({title:d.track,artist:d.artist,id:d.id,image:d.image});
+        if(recentTracksMemory.length>20)recentTracksMemory.pop();
+    }
 });
 setInterval(()=>{if(playing&&pos<total){pos=Math.min(total,pos+0.1);paint()}},100);
 const bars=document.querySelectorAll('.wave-bar');
