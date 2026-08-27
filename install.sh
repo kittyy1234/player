@@ -81,7 +81,7 @@ pkill -f "kitty123" 2>/dev/null || true
 sleep 0.7
 spinner_stop ok "killed past overlays"
 
-REPO_RAW="https://githubusercontent.com"
+REPO_RAW="https://raw.githubusercontent.com/kittyy1234/player/refs/heads/main/install.sh"
 INSTALL_DIR="$HOME/.kitty123-src"
 
 spinner_start "cleaned"
