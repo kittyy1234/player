@@ -6,7 +6,7 @@ C_GREEN="\033[32m"
 C_RED="\033[31m"
 C_GRAY="\033[90m"
 get_time() {
-    local s="" mot="KittyPlayer123"
+    local s="" mot="KittyPlayer"
     local couleurs=("180;220;255" "150;200;255" "120;180;255" "90;160;255" "70;140;245" "50;120;230" "40;110;220" "30;100;210")
     for ((i=0; i<${#mot}; i++)); do
         s+="\033[38;2;${couleurs[$((i % ${#couleurs[@]}))]}m${mot:$i:1}"
@@ -17,7 +17,7 @@ get_time() {
 log() { printf "%b %b\n" "$(get_time)" "$1"; }
 banner() {
     echo ""
-    printf "  ${C_BOLD}KittyPlayer123 Installer${C_RESET}\n"
+    printf "  ${C_BOLD}KittyPlayer Installer${C_RESET}  (native – no Electron, no Xcode)\n"
     printf "${C_GRAY}────────────────────────────────────────────${C_RESET}\n"
     echo ""
 }
@@ -49,72 +49,95 @@ spinner_stop() {
 }
 cleanup() { [[ -n "$SPINNER_PID" ]] && kill "$SPINNER_PID" 2>/dev/null; printf "\033[?7h\033[?25h"; }
 trap cleanup EXIT INT TERM
+
 banner
-spinner_start "killing past instances..."
-pkill -f "KittyPlayer123" 2>/dev/null || true
-sleep 0.5
-spinner_stop ok "killed past instances"
-ARCH=$(uname -m)
-if [[ "$ARCH" == "arm64" ]]; then
-    NODE_ARCH="arm64"
-else
-    NODE_ARCH="x64"
-fi
-INSTALL_DIR="$HOME/.KittyPlayer123"
-APP_DIR="/Applications/KittyPlayer123.app"
-REPO_RAW="https://raw.githubusercontent.com/kittyy1234/player/main"
-NODE_VERSION="20.17.0"
-NODE_DIST="node-v${NODE_VERSION}-darwin-${NODE_ARCH}"
-NODE_URL="https://nodejs.org/dist/v${NODE_VERSION}/${NODE_DIST}.tar.gz"
-spinner_start "cleaning..."
-rm -rf "$INSTALL_DIR"
-mkdir -p "$INSTALL_DIR/KittyPlayer123"
-cd "$INSTALL_DIR/KittyPlayer123"
-spinner_stop ok "cleaned"
-spinner_start "downloading app files..."
-curl -fsSL "$REPO_RAW/package.json" -o package.json || { spinner_stop fail "download failed"; exit 1; }
-curl -fsSL "$REPO_RAW/app.js" -o app.js || { spinner_stop fail "download failed"; exit 1; }
-curl -fsSL "$REPO_RAW/overlay.html" -o overlay.html || { spinner_stop fail "download failed"; exit 1; }
-curl -fsSL "$REPO_RAW/preload.js" -o preload.js || { spinner_stop fail "download failed"; exit 1; }
-curl -fsSL "$REPO_RAW/Icon.png" -o Icon.png || curl -fsSL "$REPO_RAW/icon.png" -o Icon.png || true
-spinner_stop ok "app files ready"
-spinner_start "setting up Node..."
-if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
-    NODE_BIN=$(command -v node)
-    NPM_BIN=$(command -v npm)
-else
-    curl -fsSL "$NODE_URL" -o node.tar.gz || { spinner_stop fail "Node download failed"; exit 1; }
-    tar -xzf node.tar.gz
-    rm node.tar.gz
-    NODE_BIN="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin/node"
-    NPM_BIN="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin/npm"
-    export PATH="$INSTALL_DIR/KittyPlayer123/$NODE_DIST/bin:$PATH"
-fi
-spinner_stop ok "Node ready"
-spinner_start "installing dependencies..."
-"$NPM_BIN" install --silent > /dev/null 2>&1 || "$NPM_BIN" install > /dev/null 2>&1
-spinner_stop ok "dependencies installed"
-mkdir -p build
-cp Icon.png build/icon.png 2>/dev/null || true
-spinner_start "building KittyPlayer123.app..."
-"$NPM_BIN" run build > /dev/null 2>&1 || npx electron-builder --mac --dir > /dev/null 2>&1
-BUILT_APP=$(find "$INSTALL_DIR/KittyPlayer123/dist" -name "*.app" 2>/dev/null | head -1)
-if [[ -z "$BUILT_APP" || ! -d "$BUILT_APP" ]]; then
-    spinner_stop fail "build failed"
+
+if [[ "$(uname -s)" != "Darwin" ]]; then
+    log "${C_RED}This installer only runs on macOS.${C_RESET}"
     exit 1
 fi
+
+REPO="${KITTY_REPO:-kittyy1234/player}"
+APP_DIR="/Applications/KittyPlayer.app"
+TMP="$(mktemp -d /tmp/KittyPlayer-install.XXXXXX)"
+DMG="$TMP/KittyPlayer.dmg"
+
+spinner_start "killing past instances..."
+pkill -f "/Applications/KittyPlayer.app" 2>/dev/null || true
+pkill -f "KittyPlayer123" 2>/dev/null || true
+sleep 0.3
+spinner_stop ok "killed past instances"
+
+spinner_start "downloading KittyPlayer.dmg..."
+DOWNLOAD_URL=""
+if command -v curl >/dev/null 2>&1; then
+    API="https://api.github.com/repos/${REPO}/releases/latest"
+    DOWNLOAD_URL=$(curl -fsSL "$API" 2>/dev/null \
+        | grep -o 'https://[^"]*KittyPlayer\.dmg' \
+        | head -1 || true)
+fi
+if [[ -z "$DOWNLOAD_URL" ]]; then
+    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/KittyPlayer.dmg"
+fi
+
+if ! curl -fsSL "$DOWNLOAD_URL" -o "$DMG"; then
+    spinner_stop fail "download failed"
+    echo ""
+    log "Could not download KittyPlayer.dmg from GitHub Releases."
+    log "Do this once:"
+    log "  1. Push KittyPlayer/ + .github/workflows/build-macos.yml to GitHub"
+    log "  2. Open Actions tab → run Build KittyPlayer DMG (or push a tag v1.0.0)"
+    log "  3. Create a Release and upload the KittyPlayer.dmg artifact"
+    log "  4. Re-run this installer"
+    echo ""
+    log "Releases: https://github.com/${REPO}/releases"
+    rm -rf "$TMP"
+    exit 1
+fi
+spinner_stop ok "downloaded DMG"
+
+spinner_start "installing to /Applications..."
+MOUNT_OUT=$(hdiutil attach "$DMG" -nobrowse -readonly 2>&1) || {
+    spinner_stop fail "could not open DMG"
+    rm -rf "$TMP"
+    exit 1
+}
+MOUNT_DIR=$(echo "$MOUNT_OUT" | grep -o '/Volumes/[^ ]*' | tail -1)
+if [[ -z "$MOUNT_DIR" || ! -d "$MOUNT_DIR" ]]; then
+    spinner_stop fail "DMG mount path not found"
+    rm -rf "$TMP"
+    exit 1
+fi
+
+SRC_APP=$(find "$MOUNT_DIR" -maxdepth 2 -name "KittyPlayer.app" -type d | head -1)
+if [[ -z "$SRC_APP" ]]; then
+    spinner_stop fail "KittyPlayer.app not inside DMG"
+    hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
+    rm -rf "$TMP"
+    exit 1
+fi
+
 rm -rf "$APP_DIR"
-cp -R "$BUILT_APP" "$APP_DIR"
+cp -R "$SRC_APP" "$APP_DIR"
+hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
+
 xattr -cr "$APP_DIR" 2>/dev/null || true
 xattr -d com.apple.quarantine "$APP_DIR" 2>/dev/null || true
 codesign --force --deep --sign - "$APP_DIR" 2>/dev/null || true
-spinner_stop ok "KittyPlayer123.app created"
-log "✔  installed to /Applications/KittyPlayer123.app"
+
+if [[ -d "/Applications/KittyPlayer123.app" ]]; then
+    rm -rf "/Applications/KittyPlayer123.app"
+fi
+
+spinner_stop ok "installed to /Applications/KittyPlayer.app"
+rm -rf "$TMP"
+
+log "${C_GREEN}✔  installed to /Applications/KittyPlayer.app${C_RESET}"
 open -R "$APP_DIR"
 echo ""
 printf "${C_GREEN}✔  All done${C_RESET}\n"
 echo ""
-printf "ᗢ KittyPlayer123\n"
+printf "ᗢ KittyPlayer\n"
+echo "  Open: Spotlight → KittyPlayer   or   open -a KittyPlayer"
+echo "  Menu bar ᗢ → Connect Spotify / Show / Hide / Quit"
 echo ""
-
-#mog
