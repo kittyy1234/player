@@ -1,4 +1,3 @@
-
 import Foundation
 import AppKit
 import CryptoKit
@@ -34,8 +33,6 @@ final class SpotifyBridge {
         loadTokens()
     }
 
-    // MARK: - Token storage
-
     private func loadTokens() {
         guard let data = try? Data(contentsOf: tokenURL),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
@@ -55,8 +52,6 @@ final class SpotifyBridge {
             try? data.write(to: tokenURL)
         }
     }
-
-    // MARK: - Auth
 
     func ensureToken(completion: @escaping (Bool) -> Void) {
         getValidAccessToken { token in
@@ -156,8 +151,6 @@ final class SpotifyBridge {
         }.resume()
     }
 
-    // MARK: - API helpers
-
     private func apiGet(_ path: String, completion: @escaping ([String: Any]?) -> Void) {
         getValidAccessToken { token in
             guard let token else { completion(nil); return }
@@ -191,8 +184,6 @@ final class SpotifyBridge {
             }.resume()
         }
     }
-
-    // MARK: - Playlists / search
 
     func fetchPlaylists(completion: @escaping ([[String: Any]]) -> Void) {
         var all: [[String: Any]] = []
@@ -289,9 +280,6 @@ final class SpotifyBridge {
         }
     }
 
-    // MARK: - Playback (NO FOCUS STEAL)
-
-    /// Prefer Web API so Spotify window is not activated (Roblox stays focused).
     func play(uri: String) {
         let body: [String: Any]
         if uri.contains(":playlist:") || uri.contains(":album:") {
@@ -301,13 +289,11 @@ final class SpotifyBridge {
         }
         apiPut("/me/player/play", json: body) { [weak self] status in
             if status == 204 || status == 200 { return }
-            // No active device → quietly launch Spotify then retry
             if status == 404 {
                 self?.runAppleScript("tell application \"Spotify\" to launch")
                 DispatchQueue.global().asyncAfter(deadline: .now() + 1.2) {
                     self?.apiPut("/me/player/play", json: body) { status2 in
                         if status2 == 204 || status2 == 200 { return }
-                        // Last resort: AppleScript play + restore front app
                         self?.playQuietAppleScript(uri)
                     }
                 }
@@ -349,7 +335,6 @@ final class SpotifyBridge {
         case "prev": cmd = "tell application \"Spotify\" to previous track"
         default: return
         }
-        // Use System Events restore so we don't stick on Spotify
         let script = """
         tell application "System Events"
           set frontApp to name of first application process whose frontmost is true
@@ -373,8 +358,6 @@ final class SpotifyBridge {
         let vol = max(0, min(100, Int((v * 100).rounded())))
         runAppleScript("tell application \"Spotify\" to set sound volume to \(vol)")
     }
-
-    // MARK: - Poll state via AppleScript (lightweight)
 
     func pollState(completion: @escaping ([String: Any]) -> Void) {
         let script = """
@@ -448,8 +431,6 @@ final class SpotifyBridge {
         }
     }
 
-    // MARK: - Helpers
-
     private func runAppleScript(_ source: String) {
         DispatchQueue.global(qos: .userInitiated).async {
             var error: NSDictionary?
@@ -479,12 +460,10 @@ private extension Dictionary where Key == String, Value == String {
     }
 }
 
-/// Tiny localhost callback server for Spotify PKCE
 final class AuthServer {
     private let port: UInt16
-    private var socket: Int32 = -1
+    private var sock: Int32 = -1
     private let onCode: (String) -> Void
-    private var source: DispatchSourceRead?
 
     init(port: UInt16, onCode: @escaping (String) -> Void) {
         self.port = port
@@ -497,7 +476,7 @@ final class AuthServer {
         }
     }
 
-     private func serve() {
+    private func serve() {
         let sock = Darwin.socket(AF_INET, SOCK_STREAM, 0)
         guard sock >= 0 else { return }
         var reuse: Int32 = 1
@@ -538,7 +517,7 @@ final class AuthServer {
             }))
         }
 
-        let html = "<html><body style='font-family:sans-serif;padding:40px'><h2>Connected ✓</h2><p>You can close this tab and return to KittyPlayer.</p></body></html>"
+        let html = "<html><body style='font-family:sans-serif;padding:40px'><h2>Connected</h2><p>You can close this tab and return to KittyPlayer.</p></body></html>"
         let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"
         _ = response.withCString { write(client, $0, strlen($0)) }
         close(client)
@@ -548,3 +527,4 @@ final class AuthServer {
             DispatchQueue.main.async { self.onCode(code) }
         }
     }
+}
