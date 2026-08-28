@@ -131,4 +131,4 @@ echo "  Open: Spotlight → KittyPlayer   or   open -a KittyPlayer"
 echo "  Menu bar ᗢ → Connect Spotify / Show / Hide / Quit"
 echo ""
 
-#:3
+# meow :3
