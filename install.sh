@@ -5,6 +5,7 @@ C_BOLD="\033[1m"
 C_GREEN="\033[32m"
 C_RED="\033[31m"
 C_GRAY="\033[90m"
+
 get_time() {
     local s="" mot="KittyPlayer"
     local couleurs=("180;220;255" "150;200;255" "120;180;255" "90;160;255" "70;140;245" "50;120;230" "40;110;220" "30;100;210")
@@ -57,10 +58,9 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
     exit 1
 fi
 
-REPO="${KITTY_REPO:-kittyy1234/player}"
+REPO="kittyy1234/player"
 APP_DIR="/Applications/KittyPlayer.app"
-TMP="$(mktemp -d /tmp/KittyPlayer-install.XXXXXX)"
-DMG="$TMP/KittyPlayer.dmg"
+TMP="$(mktemp -d /tmp/KittyPlayer-build.XXXXXX)"
 
 spinner_start "killing past instances..."
 pkill -f "/Applications/KittyPlayer.app" 2>/dev/null || true
@@ -68,58 +68,47 @@ pkill -f "KittyPlayer123" 2>/dev/null || true
 sleep 0.3
 spinner_stop ok "killed past instances"
 
-spinner_start "downloading KittyPlayer.dmg..."
-DOWNLOAD_URL=""
-if command -v curl >/dev/null 2>&1; then
-    API="https://api.github.com/repos/${REPO}/releases/latest"
-    DOWNLOAD_URL=$(curl -fsSL "$API" 2>/dev/null \
-        | grep -o 'https://[^"]*KittyPlayer\.dmg' \
-        | head -1 || true)
-fi
-if [[ -z "$DOWNLOAD_URL" ]]; then
-    DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/KittyPlayer.dmg"
-fi
-
-if ! curl -fsSL "$DOWNLOAD_URL" -o "$DMG"; then
-    spinner_stop fail "download failed"
-    echo ""
-    log "Could not download KittyPlayer.dmg from GitHub Releases."
-    log "Do this once:"
-    log "  1. Push KittyPlayer/ + .github/workflows/build-macos.yml to GitHub"
-    log "  2. Open Actions tab → run Build KittyPlayer DMG (or push a tag v1.0.0)"
-    log "  3. Create a Release and upload the KittyPlayer.dmg artifact"
-    log "  4. Re-run this installer"
-    echo ""
-    log "Releases: https://github.com/${REPO}/releases"
+spinner_start "cloning repository source code..."
+if ! git clone --depth 1 "https://github.com{REPO}.git" "$TMP/repo" >/dev/null 2>&1; then
+    spinner_stop fail "failed to clone repository"
     rm -rf "$TMP"
     exit 1
 fi
-spinner_stop ok "downloaded DMG"
+spinner_stop ok "cloned source code successfully"
 
-spinner_start "installing to /Applications..."
-MOUNT_OUT=$(hdiutil attach "$DMG" -nobrowse -readonly 2>&1) || {
-    spinner_stop fail "could not open DMG"
+spinner_start "compiling KittyPlayer locally..."
+cd "$TMP/repo/KittyPlayer" || {
+    spinner_stop fail "project directory structure error"
     rm -rf "$TMP"
     exit 1
 }
-MOUNT_DIR=$(echo "$MOUNT_OUT" | grep -o '/Volumes/[^ ]*' | tail -1)
-if [[ -z "$MOUNT_DIR" || ! -d "$MOUNT_DIR" ]]; then
-    spinner_stop fail "DMG mount path not found"
+
+chmod +x build.sh
+if ! ./build.sh >/dev/null 2>&1; then
+    spinner_stop fail "local compilation failed via build.sh"
     rm -rf "$TMP"
     exit 1
 fi
+spinner_stop ok "compiled local application successfully"
 
-SRC_APP=$(find "$MOUNT_DIR" -maxdepth 2 -name "KittyPlayer.app" -type d | head -1)
+SRC_APP=""
+if [[ -d "./KittyPlayer.app" ]]; then
+    SRC_APP="./KittyPlayer.app"
+elif [[ -d "./.build/release/KittyPlayer.app" ]]; then
+    SRC_APP="./.build/release/KittyPlayer.app"
+elif [[ -d "./.build/debug/KittyPlayer.app" ]]; then
+    SRC_APP="./.build/debug/KittyPlayer.app"
+fi
+
 if [[ -z "$SRC_APP" ]]; then
-    spinner_stop fail "KittyPlayer.app not inside DMG"
-    hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
+    spinner_stop fail "could not find compiled KittyPlayer.app target bundle"
     rm -rf "$TMP"
     exit 1
 fi
 
+spinner_start "installing to /Applications..."
 rm -rf "$APP_DIR"
 cp -R "$SRC_APP" "$APP_DIR"
-hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
 
 xattr -cr "$APP_DIR" 2>/dev/null || true
 xattr -d com.apple.quarantine "$APP_DIR" 2>/dev/null || true
