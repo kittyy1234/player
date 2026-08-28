@@ -4,10 +4,10 @@ import WebKit
 final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
     private var panel: NSPanel!
     private var webView: WKWebView!
-    private let spotify: SpotifyBridge
+    private let spotify: SpotifyConnector
     private var isReady = false
 
-    init(spotify: SpotifyBridge) {
+    init(spotify: SpotifyConnector) {
         self.spotify = spotify
         super.init()
         buildPanel()
@@ -34,12 +34,10 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
         panel.hasShadow = false
         panel.hidesOnDeactivate = false
         panel.becomesKeyOnlyIfNeeded = true
-        // Critical: do not activate the app when interacting
         panel.isMovableByWindowBackground = true
 
         let config = WKWebViewConfiguration()
         config.userContentController.add(self, name: "kitty")
-        // Transparent page
         let prefs = WKWebpagePreferences()
         prefs.allowsContentJavaScript = true
         config.defaultWebpagePreferences = prefs
@@ -54,7 +52,6 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
         webView.autoresizingMask = [.width, .height]
         panel.contentView?.addSubview(webView)
 
-        // Load bundled overlay.html from app Resources
         let candidates: [URL?] = [
             Bundle.main.url(forResource: "overlay", withExtension: "html"),
             Bundle.main.resourceURL?.appendingPathComponent("overlay.html"),
@@ -63,31 +60,19 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
         if let url = candidates.compactMap({ $0 }).first(where: { FileManager.default.fileExists(atPath: $0.path) }) {
             webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
         } else {
-            // Fallback: show a tiny error page so we know the resource is missing
-            let html = "<html><body style='background:transparent;color:#fff;font-family:sans-serif;padding:20px'>KittyPlayer: overlay.html not found in app bundle.</body></html>"
+            let html = "<html><body style='background:transparent;color:#fff;font-family:sans-serif;padding:20px'>KittyPlayer: overlay.html missing from app bundle.</body></html>"
             webView.loadHTMLString(html, baseURL: nil)
         }
     }
 
-    func show() {
-        panel.orderFrontRegardless()
-    }
-
-    func hide() {
-        panel.orderOut(nil)
-    }
-
-    func close() {
-        panel.close()
-    }
-
-    // MARK: - JS → Swift
+    func show() { panel.orderFrontRegardless() }
+    func hide() { panel.orderOut(nil) }
+    func close() { panel.close() }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "kitty",
               let body = message.body as? [String: Any],
               let action = body["action"] as? String else { return }
-
         let value = body["value"]
 
         switch action {
@@ -97,53 +82,33 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
                 let h = (dict["height"] as? NSNumber)?.doubleValue ?? (dict["height"] as? Double) ?? 130
                 resize(to: CGSize(width: w, height: h))
             }
-
-        case "playpause":
-            spotify.control("playpause")
-        case "next":
-            spotify.control("next")
-        case "prev":
-            spotify.control("prev")
+        case "playpause": spotify.control("playpause")
+        case "next": spotify.control("next")
+        case "prev": spotify.control("prev")
         case "scrub":
-            if let sec = value as? Double ?? (value as? NSNumber)?.doubleValue {
-                spotify.scrub(sec)
-            }
+            if let sec = value as? Double ?? (value as? NSNumber)?.doubleValue { spotify.scrub(sec) }
         case "volume":
-            if let v = value as? Double ?? (value as? NSNumber)?.doubleValue {
-                spotify.setVolume(v)
-            }
+            if let v = value as? Double ?? (value as? NSNumber)?.doubleValue { spotify.setVolume(v) }
         case "playUri", "playPlaylist":
-            if let uri = value as? String {
-                // Web API first → no focus steal
-                spotify.play(uri: uri)
-            }
+            if let uri = value as? String { spotify.play(uri: uri) }
         case "getRealPlaylists":
-            spotify.fetchPlaylists { [weak self] list in
-                self?.sendPlaylists(list)
-            }
+            spotify.fetchPlaylists { [weak self] list in self?.sendPlaylists(list) }
         case "getPlaylistTracks":
             if let id = value as? String {
-                spotify.fetchPlaylistTracks(id) { [weak self] tracks in
-                    self?.sendTracks(tracks)
-                }
+                spotify.fetchPlaylistTracks(id) { [weak self] tracks in self?.sendTracks(tracks) }
             }
         case "search":
             if let q = value as? String {
-                spotify.search(q) { [weak self] tracks in
-                    self?.sendSearch(tracks)
-                }
+                spotify.search(q) { [weak self] tracks in self?.sendSearch(tracks) }
             }
         case "login":
             spotify.login { [weak self] ok in
                 self?.sendAuthStatus(connected: ok)
                 if ok {
-                    self?.spotify.fetchPlaylists { list in
-                        self?.sendPlaylists(list)
-                    }
+                    self?.spotify.fetchPlaylists { list in self?.sendPlaylists(list) }
                 }
             }
-        default:
-            break
+        default: break
         }
     }
 
@@ -155,8 +120,6 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
         let y = screen.minY + 20
         panel.setFrame(NSRect(x: x, y: y, width: w, height: h), display: true, animate: false)
     }
-
-    // MARK: - Swift → JS
 
     private func eval(_ js: String) {
         DispatchQueue.main.async { [weak self] in
