@@ -60,7 +60,8 @@ fi
 
 REPO="kittyy1234/player"
 APP_DIR="/Applications/KittyPlayer.app"
-TMP="$(mktemp -d /tmp/KittyPlayer-build.XXXXXX)"
+TMP="$(mktemp -d /tmp/KittyPlayer-install.XXXXXX)"
+DMG="$TMP/KittyPlayer.dmg"
 
 spinner_start "killing past instances..."
 pkill -f "/Applications/KittyPlayer.app" 2>/dev/null || true
@@ -68,47 +69,44 @@ pkill -f "KittyPlayer123" 2>/dev/null || true
 sleep 0.3
 spinner_stop ok "killed past instances"
 
-spinner_start "cloning repository source code..."
-if ! git clone --depth 1 "https://github.com/${REPO}.git" "$TMP/repo" >/dev/null 2>&1; then
-    spinner_stop fail "failed to clone repository"
+spinner_start "downloading KittyPlayer.dmg..."
+DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/KittyPlayer.dmg"
+
+if ! curl -fsSL "$DOWNLOAD_URL" -o "$DMG"; then
+    spinner_stop fail "download failed"
+    echo ""
+    log "Could not download KittyPlayer.dmg from GitHub Releases."
+    log "Make sure a tagged Release (e.g. v1.0.0) has been pushed and the build workflow has finished."
+    log "Releases: https://github.com/${REPO}/releases"
     rm -rf "$TMP"
     exit 1
 fi
-spinner_stop ok "cloned source code successfully"
+spinner_stop ok "downloaded DMG"
 
-spinner_start "compiling KittyPlayer locally..."
-cd "$TMP/repo/KittyPlayer" || {
-    spinner_stop fail "project directory structure error"
+spinner_start "installing to /Applications..."
+MOUNT_OUT=$(hdiutil attach "$DMG" -nobrowse -readonly 2>&1) || {
+    spinner_stop fail "could not open DMG"
     rm -rf "$TMP"
     exit 1
 }
-
-chmod +x build.sh
-if ! ./build.sh >/dev/null 2>&1; then
-    spinner_stop fail "local compilation failed via build.sh"
+MOUNT_DIR=$(echo "$MOUNT_OUT" | grep -o '/Volumes/[^ ]*' | tail -1)
+if [[ -z "$MOUNT_DIR" || ! -d "$MOUNT_DIR" ]]; then
+    spinner_stop fail "DMG mount path not found"
     rm -rf "$TMP"
     exit 1
 fi
-spinner_stop ok "compiled local application successfully"
 
-SRC_APP=""
-if [[ -d "./KittyPlayer.app" ]]; then
-    SRC_APP="./KittyPlayer.app"
-elif [[ -d "./.build/release/KittyPlayer.app" ]]; then
-    SRC_APP="./.build/release/KittyPlayer.app"
-elif [[ -d "./.build/debug/KittyPlayer.app" ]]; then
-    SRC_APP="./.build/debug/KittyPlayer.app"
-fi
-
+SRC_APP=$(find "$MOUNT_DIR" -maxdepth 2 -name "KittyPlayer.app" -type d | head -1)
 if [[ -z "$SRC_APP" ]]; then
-    spinner_stop fail "could not find compiled KittyPlayer.app target bundle"
+    spinner_stop fail "KittyPlayer.app not inside DMG"
+    hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
     rm -rf "$TMP"
     exit 1
 fi
 
-spinner_start "installing to /Applications..."
 rm -rf "$APP_DIR"
 cp -R "$SRC_APP" "$APP_DIR"
+hdiutil detach "$MOUNT_DIR" -quiet 2>/dev/null || true
 
 xattr -cr "$APP_DIR" 2>/dev/null || true
 xattr -d com.apple.quarantine "$APP_DIR" 2>/dev/null || true
@@ -130,5 +128,3 @@ printf "ᗢ KittyPlayer\n"
 echo "  Open: Spotlight → KittyPlayer   or   open -a KittyPlayer"
 echo "  Menu bar ᗢ → Connect Spotify / Show / Hide / Quit"
 echo ""
-
-# meow :3
