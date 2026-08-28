@@ -18,7 +18,7 @@ get_time() {
 log() { printf "%b %b\n" "$(get_time)" "$1"; }
 banner() {
     echo ""
-    printf "  ${C_BOLD}KittyPlayer Installer${C_RESET}  (native – no Electron, no Xcode)\n"
+    printf "  ${C_BOLD}KittyPlayer Installer${C_RESET} :3"
     printf "${C_GRAY}────────────────────────────────────────────${C_RESET}\n"
     echo ""
 }
