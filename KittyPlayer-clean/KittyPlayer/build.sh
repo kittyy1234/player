@@ -9,6 +9,9 @@ APP="$BUILD/$APP_NAME.app"
 DMG="$BUILD/$APP_NAME.dmg"
 SOURCES="$ROOT/Sources/KittyPlayer"
 RESOURCES="$ROOT/Resources"
+ICON_REPO="${KITTY_REPO:-kittyy1234/player}"
+ICON_URL="https://raw.githubusercontent.com/${ICON_REPO}/main/Icon.png"
+
 echo "Building $APP_NAME (universal)…"
 rm -rf "$BUILD"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
@@ -25,7 +28,8 @@ lipo -create "$BUILD/KittyPlayer-arm64" "$BUILD/KittyPlayer-x86_64" \
   -output "$APP/Contents/MacOS/KittyPlayer"
 chmod +x "$APP/Contents/MacOS/KittyPlayer"
 cp "$RESOURCES/overlay.html" "$APP/Contents/Resources/overlay.html"
-# App icon from Icon.png (repo root or Resources)
+
+# App icon: look locally first, then fall back to downloading it from GitHub
 ICON_SRC=""
 for candidate in \
   "$REPO_ROOT/Icon.png" \
@@ -38,6 +42,21 @@ do
     break
   fi
 done
+
+if [[ -z "$ICON_SRC" ]]; then
+  echo "  Icon.png not found locally — downloading from $ICON_URL"
+  ICON_CACHE_DIR="$BUILD/icon-download"
+  mkdir -p "$ICON_CACHE_DIR"
+  ICON_DOWNLOAD="$ICON_CACHE_DIR/Icon.png"
+  if curl -fsSL "$ICON_URL" -o "$ICON_DOWNLOAD" && [[ -s "$ICON_DOWNLOAD" ]]; then
+    ICON_SRC="$ICON_DOWNLOAD"
+    echo "  downloaded icon → $ICON_SRC"
+  else
+    echo "  could not download icon (check KITTY_REPO / network) — using default app icon"
+    rm -f "$ICON_DOWNLOAD"
+  fi
+fi
+
 ICON_KEY=""
 if [[ -n "$ICON_SRC" ]]; then
   if [[ "$ICON_SRC" == *.icns ]]; then
@@ -63,8 +82,9 @@ if [[ -n "$ICON_SRC" ]]; then
     echo "  icon: $ICON_SRC → AppIcon.icns"
   fi
 else
-  echo "  (no Icon.png found – default app icon)"
+  echo "  (no icon available – default app icon)"
 fi
+
 cat > "$APP/Contents/Info.plist" << PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -115,5 +135,3 @@ hdiutil create -volname "KittyPlayer" -srcfolder "$STAGE" -ov -format UDZO "$DMG
 rm -rf "$STAGE"
 echo "DMG: $DMG"
 echo "Done."
-
-#mog
