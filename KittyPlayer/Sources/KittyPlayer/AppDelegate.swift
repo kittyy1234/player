@@ -4,10 +4,9 @@ import WebKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var overlay: OverlayController?
     var statusItem: NSStatusItem?
-    let spotify = SpotifyBridge()
+    let spotify = SpotifyConnector()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let btn = statusItem?.button {
             btn.title = "ᗢ"
@@ -45,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func showPlayer() { overlay?.show() }
     @objc func hidePlayer() { overlay?.hide() }
+
     @objc func connectSpotify() {
         spotify.login { [weak self] ok in
             DispatchQueue.main.async {
@@ -57,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
     }
+
     @objc func quit() {
         overlay?.close()
         NSApp.terminate(nil)
