@@ -69,7 +69,7 @@ sleep 0.3
 spinner_stop ok "killed past instances"
 
 spinner_start "cloning repository source code..."
-if ! git clone --depth 1 "https://github.com{REPO}.git" "$TMP/repo" >/dev/null 2>&1; then
+if ! git clone --depth 1 "https://github.com/${REPO}.git" "$TMP/repo" >/dev/null 2>&1; then
     spinner_stop fail "failed to clone repository"
     rm -rf "$TMP"
     exit 1
@@ -130,3 +130,5 @@ printf "ᗢ KittyPlayer\n"
 echo "  Open: Spotlight → KittyPlayer   or   open -a KittyPlayer"
 echo "  Menu bar ᗢ → Connect Spotify / Show / Hide / Quit"
 echo ""
+
+#:3
