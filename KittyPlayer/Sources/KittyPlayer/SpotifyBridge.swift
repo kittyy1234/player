@@ -497,9 +497,8 @@ final class AuthServer {
         }
     }
 
-    private func serve() {
-        // Simple one-shot HTTP server using Foundation
-        let sock = socket(AF_INET, SOCK_STREAM, 0)
+     private func serve() {
+        let sock = Darwin.socket(AF_INET, SOCK_STREAM, 0)
         guard sock >= 0 else { return }
         var reuse: Int32 = 1
         setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout.size(ofValue: reuse)))
@@ -531,10 +530,12 @@ final class AuthServer {
         var code = ""
         if let range = request.range(of: "GET /callback?code=") {
             let rest = request[range.upperBound...]
-            code = String(rest.prefix(while: { $0 != " " && $0 != "&" }))
+            code = String(rest.prefix(while: { (ch: Character) -> Bool in ch != " " && ch != "&" }))
         } else if let r = request.range(of: "code=") {
             let rest = request[r.upperBound...]
-            code = String(rest.prefix(while: { $0 != " " && $0 != "&" && $0 != "\r" && $0 != "\n" }))
+            code = String(rest.prefix(while: { (ch: Character) -> Bool in
+                ch != " " && ch != "&" && ch != "\r" && ch != "\n"
+            }))
         }
 
         let html = "<html><body style='font-family:sans-serif;padding:40px'><h2>Connected ✓</h2><p>You can close this tab and return to KittyPlayer.</p></body></html>"
@@ -547,4 +548,3 @@ final class AuthServer {
             DispatchQueue.main.async { self.onCode(code) }
         }
     }
-}
