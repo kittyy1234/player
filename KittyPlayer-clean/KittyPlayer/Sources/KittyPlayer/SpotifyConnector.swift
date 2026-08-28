@@ -59,16 +59,19 @@ final class SpotifyConnector {
         let verifier = Self.randomString(64)
         let challenge = Self.sha256Base64URL(verifier)
 
-        // Start localhost callback server BEFORE opening Safari
-        authServer = AuthServer(port: 8888) { [weak self] code in
+        let server = AuthServer(port: 8888) { [weak self] code in
             self?.exchangeCode(code, verifier: verifier) { ok in
                 completion(ok)
             }
         }
-        authServer?.start()
+        authServer = server
 
-        // Brief delay so the server is listening when Spotify redirects
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        server.start { [weak self] wasBound in
+            guard let self else { return }
+            guard wasBound else {
+                DispatchQueue.main.async { completion(false) }
+                return
+            }
             var comps = URLComponents(string: "https://accounts.spotify.com/authorize")!
             comps.queryItems = [
                 URLQueryItem(name: "client_id", value: self.clientId),
@@ -80,7 +83,9 @@ final class SpotifyConnector {
                 URLQueryItem(name: "prompt", value: "consent"),
             ]
             if let url = comps.url {
-                NSWorkspace.shared.open(url)
+                DispatchQueue.main.async {
+                    NSWorkspace.shared.open(url)
+                }
             }
         }
     }
@@ -441,25 +446,30 @@ private extension Dictionary where Key == String, Value == String {
     }
 }
 
-/// Localhost callback server for Spotify PKCE redirect
+/// Localhost callback server for Spotify PKCE redirect.
+/// Binds synchronously and reports success/failure to the caller so
+/// Safari is never opened before the socket is actually listening.
+/// Loops to accept more than one connection so a stray retry from
+/// Safari doesn't hit a dead socket, and shuts itself down after a
+/// real code is captured.
 final class AuthServer {
     private let port: UInt16
     private let onCode: (String) -> Void
+    private var sock: Int32 = -1
+    private var shouldStop = false
 
     init(port: UInt16, onCode: @escaping (String) -> Void) {
         self.port = port
         self.onCode = onCode
     }
 
-    func start() {
-        DispatchQueue.global().async { [weak self] in self?.serve() }
-    }
+    func start(bound: @escaping (Bool) -> Void) {
+        sock = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+        guard sock >= 0 else { bound(false); return }
 
-    private func serve() {
-        let sock = Darwin.socket(AF_INET, SOCK_STREAM, 0)
-        guard sock >= 0 else { return }
         var reuse: Int32 = 1
         setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &reuse, socklen_t(MemoryLayout.size(ofValue: reuse)))
+
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = port.bigEndian
@@ -469,45 +479,71 @@ final class AuthServer {
                 bind(sock, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
-        guard bindResult == 0 else { close(sock); return }
-        listen(sock, 2)
+        guard bindResult == 0 else {
+            close(sock)
+            sock = -1
+            bound(false)
+            return
+        }
+        guard listen(sock, 8) == 0 else {
+            close(sock)
+            sock = -1
+            bound(false)
+            return
+        }
 
-        var clientAddr = sockaddr_in()
-        var len = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let client = withUnsafeMutablePointer(to: &clientAddr) {
-            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                accept(sock, $0, &len)
+        bound(true)
+        DispatchQueue.global().async { [weak self] in self?.acceptLoop() }
+    }
+
+    func stop() {
+        shouldStop = true
+        if sock >= 0 {
+            close(sock)
+            sock = -1
+        }
+    }
+
+    private func acceptLoop() {
+        while !shouldStop && sock >= 0 {
+            var clientAddr = sockaddr_in()
+            var len = socklen_t(MemoryLayout<sockaddr_in>.size)
+            let client = withUnsafeMutablePointer(to: &clientAddr) {
+                $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    accept(sock, $0, &len)
+                }
             }
-        }
-        guard client >= 0 else { close(sock); return }
+            guard client >= 0 else { continue }
 
-        var buffer = [UInt8](repeating: 0, count: 16384)
-        let n = read(client, &buffer, buffer.count)
-        let request = n > 0 ? String(bytes: buffer[0..<n], encoding: .utf8) ?? "" : ""
+            var buffer = [UInt8](repeating: 0, count: 16384)
+            let n = read(client, &buffer, buffer.count)
+            let request = n > 0 ? String(bytes: buffer[0..<n], encoding: .utf8) ?? "" : ""
 
-        var code = ""
-        // Handles: GET /callback?code=XXX&...  or  GET /?code=XXX
-        if let r = request.range(of: "code=") {
-            let rest = request[r.upperBound...]
-            code = String(rest.prefix(while: { ch in
-                ch != " " && ch != "&" && ch != "\r" && ch != "\n"
-            }))
-        }
+            var code = ""
+            if let r = request.range(of: "code=") {
+                let rest = request[r.upperBound...]
+                code = String(rest.prefix(while: { ch in
+                    ch != " " && ch != "&" && ch != "\r" && ch != "\n"
+                }))
+            }
 
-        let html = """
-        <html><body style="font-family:-apple-system,sans-serif;padding:40px;background:#111;color:#fff">
-        <h2>Connected ✓</h2>
-        <p>You can close this tab and return to KittyPlayer.</p>
-        <script>setTimeout(function(){ window.close(); }, 800);</script>
-        </body></html>
-        """
-        let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"
-        _ = response.withCString { write(client, $0, strlen($0)) }
-        close(client)
-        close(sock)
+            let html = """
+            <html><body style="font-family:-apple-system,sans-serif;padding:40px;background:#111;color:#fff">
+            <h2>Connected ✓</h2>
+            <p>You can close this tab and return to KittyPlayer.</p>
+            <script>setTimeout(function(){ window.close(); }, 800);</script>
+            </body></html>
+            """
+            let response = "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: \(html.utf8.count)\r\nConnection: close\r\n\r\n\(html)"
+            _ = response.withCString { write(client, $0, strlen($0)) }
+            close(client)
 
-        if !code.isEmpty {
-            DispatchQueue.main.async { self.onCode(code) }
+            if !code.isEmpty {
+                DispatchQueue.main.async { self.onCode(code) }
+                stop()
+                break
+            }
         }
     }
 }
+// moggg
