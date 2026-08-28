@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>KittyPlayer123</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:transparent !important;background-color:rgba(0,0,0,0) !important;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;user-select:none;-webkit-user-select:none}
+body{display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+
+/* Outer layout – ears sit on the top edge of the shell */
+.cat-container{
+  position:relative;
+  width:450px;
+  height:124px;
+  padding-top:18px;
+  transform-origin:center bottom;
+  transition:transform 0.35s cubic-bezier(0.25,0.8,0.25,1);
+}
+
+/* Simple pointed cat ears sitting ON the top edge (like the screenshot) */
+.cat-ear{
+  position:absolute;
+  top:2px;                    /* sits right on the top curve of the shell */
+  width:0;
+  height:0;
+  border-left:15px solid transparent;
+  border-right:15px solid transparent;
+  border-bottom:22px solid var(--ear-color, #ff9eb5);
+  z-index:20;
+  filter:drop-shadow(0 -1px 3px rgba(0,0,0,0.35));
+  transition:border-bottom-color 0.45s ease;
+  pointer-events:none;
+}
+.cat-ear.left{
+  left:28px;
+  transform:rotate(-12deg);
+}
+.cat-ear.right{
+  right:28px;
+  transform:rotate(12deg);
+}
+/* hide old inner ear element – no longer needed */
+.ear-inner{display:none !important;}
+
+/* Main glass body */
+.shell{
+  -webkit-app-region:drag;
+  width:450px;
+  height:106px;
+  border-radius:24px;
+  background:rgba(16,16,19,.92);
+  border:1px solid rgba(255,255,255,.22);
+  box-shadow:0 12px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  display:flex;
+  align-items:center;
+  padding:0 14px;
+  gap:12px;
+  position:relative;
+  overflow:hidden;
+  z-index:10;
+  transition:all 0.35s cubic-bezier(0.25,0.8,0.25,1);
+}
+.shell::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  background:radial-gradient(circle at 12% 50%, var(--bg-glow, transparent) 0%, transparent 65%);
+  opacity:0.45;
+  z-index:0;
+  pointer-events:none;
+  transition:background 0.6s ease;
+}
+/* Whiskers + tiny face details */
+.shell::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;top:0;bottom:0;
+  pointer-events:none;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 450 106"><path d="M6 38h22M4 44h24M7 50h21M444 38h-22M446 44h-24M443 50h-21" stroke="rgba(255,255,255,0.22)" stroke-width="1.5" stroke-linecap="round"/><circle cx="160" cy="20" r="4" fill="rgba(255,255,255,0.15)"/><circle cx="290" cy="20" r="4" fill="rgba(255,255,255,0.15)"/><path d="M222 25h6l-3 4z" fill="rgb(255,192,203)"/><path d="M222 29q3 3 3 0q0 3 3 0" stroke="rgb(255,192,203)" stroke-width="1" fill="none"/></svg>');
+  background-repeat:no-repeat;
+  background-size:100% 100%;
+  z-index:0;
+}
+
+.left-block{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:3px;
+  flex-shrink:0;
+  width:64px;
+  position:relative;
+  z-index:1;
+  margin-top:2px;
+}
+.art-wrapper{
+  -webkit-app-region:no-drag;
+  position:relative;
+  width:56px;
+  height:52px;
+  cursor:pointer;
+}
+.art,.artph{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:rgba(45,45,50,.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:rgba(255,255,255,.25);
+  font-size:20px;
+  clip-path:polygon(0% 30%, 14% 0%, 35% 20%, 65% 20%, 86% 0%, 100% 30%, 100% 85%, 82% 100%, 18% 100%, 0% 85%);
+}
+.brand-label{
+  color:#fff;
+  font-size:8px;
+  font-weight:600;
+  letter-spacing:0.3px;
+  text-align:center;
+  width:100%;
+  white-space:nowrap;
+  opacity:0.95;
+}
+
+.meta{
+  flex:1;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  height:90px;
+  position:relative;
+  padding-right:55px;
+  z-index:1;
+}
+.track{
+  color:#fff;
+  font-weight:700;
+  font-size:14px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.marquee-window{
+  width:100%;
+  overflow:hidden;
+  white-space:nowrap;
+  position:relative;
+  height:16px;
+  margin-top:2px;
+  mask-image:linear-gradient(to right,#000 0%,#000 85%,transparent 100%);
+  -webkit-mask-image:linear-gradient(to right,#000 0%,#000 85%,transparent 100%);
+}
+.artist{
+  color:rgb(170,170,178);
+  font-size:12px;
+  display:inline-block;
+  white-space:nowrap;
+}
+@keyframes marquee{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}
+
+.row{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  margin-top:6px;
+  width:100%;
+}
+.progress-wrap{
+  -webkit-app-region:no-drag;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+  width:100%;
+}
+.bar-bg{
+  height:4px;
+  border-radius:2px;
+  background:rgba(255,255,255,.25);
+  position:relative;
+  cursor:pointer;
+}
+.bar-fill{
+  height:100%;
+  width:0%;
+  border-radius:2px;
+  background:#fff;
+  transition:width 0.1s linear;
+}
+.times-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  color:rgb(170,170,178);
+  font-size:11px;
+  font-variant-numeric:tabular-nums;
+  margin-top:2px;
+  width:100%;
+}
+.time-label{width:50px;flex-shrink:0}
+#tTot{text-align:right}
+.centered-controls-group{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  flex:1;
+}
+.btns{
+  -webkit-app-region:no-drag;
+  display:flex;
+  align-items:center;
+  gap:16px;
+  flex-shrink:0;
+  cursor:pointer;
+}
+.btns svg{fill:rgba(255,255,255,0.66);transition:fill 0.15s ease}
+.btns svg:hover{fill:#fff}
+.btns #btnPP{fill:#fff;display:flex;align-items:center;justify-content:center;width:20px;height:20px}
+
+.vol-container{
+  -webkit-app-region:no-drag;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+.vol-icon{
+  cursor:pointer;
+  width:20px;
+  height:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.vol-icon svg{fill:rgb(170,170,178);transition:fill 0.15s ease}
+.vol-icon:hover svg{fill:#fff}
+.vol-bg{
+  width:50px;
+  height:4px;
+  border-radius:2px;
+  background:rgba(255,255,255,.2);
+  position:relative;
+  cursor:pointer;
+}
+.vol-fill{
+  height:100%;
+  width:70%;
+  border-radius:2px;
+  background:#fff;
+  transition:width 0.12s ease;
+}
+
+/* Equalizer waves – colors driven by album art */
+.island-waves{
+  -webkit-app-region:no-drag;
+  position:absolute;
+  right:8px;
+  top:20px;
+  display:flex;
+  align-items:flex-end;
+  gap:3px;
+  height:22px;
+  width:48px;
+  justify-content:flex-end;
+  cursor:pointer;
+  z-index:10;
+}
+.wave-bar{
+  width:3px;
+  height:6px;
+  border-radius:2px;
+  transition:height 0.12s ease-in-out,background 0.35s ease;
+  background:var(--wave-grad, linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a));
+}
+
+/* Drawer */
+.drawer{
+  -webkit-app-region:no-drag;
+  width:450px;
+  height:0px;
+  border-radius:18px;
+  background:rgba(16,16,19,.92);
+  border:0px solid rgba(255,255,255,.22);
+  box-shadow:0 12px 40px rgba(0,0,0,.45);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  transition:all 0.25s ease-in-out;
+  opacity:0;
+  z-index:2;
+  transform-origin:center top;
+}
+.drawer.open{
+  height:320px;
+  border:1px solid rgba(255,255,255,.22);
+  opacity:1;
+  padding:12px;
+}
+.search-box{
+  width:100%;
+  padding:8px 12px;
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.1);
+  border-radius:8px;
+  color:#fff;
+  outline:none;
+  font-size:12px;
+  margin-bottom:12px;
+}
+.search-box::placeholder{color:rgba(255,255,255,.4)}
+.nav-tabs{
+  display:flex;
+  gap:14px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  padding-bottom:6px;
+  margin-bottom:10px;
+}
+.tab{color:rgba(255,255,255,.5);font-size:12px;font-weight:600;cursor:pointer}
+.tab.active{color:#fff;border-bottom:2px solid #fff;padding-bottom:4px}
+.back-btn{color:rgb(255,182,193);font-size:11px;cursor:pointer;margin-bottom:6px;display:none;font-weight:bold}
+.account-row{display:flex;align-items:center;justify-content:flex-end;margin-bottom:8px}
+.login-btn{
+  -webkit-app-region:no-drag;
+  background:rgba(255,158,181,0.18);
+  color:#ff9eb5;
+  border:1px solid rgba(255,158,181,0.35);
+  border-radius:99px;
+  padding:5px 12px;
+  font-size:11px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background 0.15s,color 0.15s;
+}
+.login-btn:hover{background:rgba(255,158,181,0.32);color:#fff}
+.login-btn.connected{background:rgba(29,185,84,0.15);color:#1db954;border-color:rgba(29,185,84,0.35)}
+.list-container{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.list-item{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;cursor:pointer}
+.list-item:hover{background:rgba(255,255,255,.06)}
+.list-thumb{width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,.1);object-fit:cover;flex-shrink:0}
+.list-thumb-ph{width:40px;height:40px;border-radius:6px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;flex-shrink:0}
+.list-info{display:flex;flex-direction:column;min-width:0;flex:1;gap:1px}
+.list-title{color:#fff;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list-sub{color:rgba(255,255,255,.45);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.play-btn{-webkit-app-region:no-drag;color:rgb(255,182,193);font-size:14px;font-weight:bold;padding:4px 8px;cursor:pointer;border-radius:4px;flex-shrink:0}
+.play-btn:hover{background:rgba(255,182,193,.15)}
+.search-hint{color:rgba(255,255,255,.4);font-size:11px;text-align:center;padding:20px 10px}
+</style>
+</head>
+<body>
+
+<script>
+/* KittyPlayer native bridge – works with WKWebView (no Electron) */
+(function () {
+  if (window.electronAPI) return; // already present (Electron)
+  const listeners = {};
+  function on(channel, cb) {
+    (listeners[channel] = listeners[channel] || []).push(cb);
+  }
+  window.__kittyRecv = function (channel, data) {
+    (listeners[channel] || []).forEach(function (cb) { try { cb(data); } catch (e) {} });
+  };
+  function send(action, value) {
+    try {
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.kitty) {
+        window.webkit.messageHandlers.kitty.postMessage({ action: action, value: value });
+      }
+    } catch (e) {}
+  }
+  window.electronAPI = {
+    resizeWindow: function (bounds) { send("resize-window", bounds); },
+    sendControl: function (action, value) { send(action, value); },
+    onSpotifyData: function (cb) { on("spotify-data", cb); },
+    onPlaylistsReply: function (cb) { on("playlists-reply", cb); },
+    onTracksReply: function (cb) { on("tracks-reply", cb); },
+    onSearchReply: function (cb) { on("search-reply", cb); },
+    onAuthStatus: function (cb) { on("auth-status", cb); },
+  };
+})();
+</script>
+
+<div class="cat-container" id="catContainer">
+  <div class="cat-ear left"><div class="ear-inner"></div></div>
+  <div class="cat-ear right"><div class="ear-inner"></div></div>
+  <div class="shell" id="playerShell">
+    <div class="left-block">
+      <div class="art-wrapper" id="artAction">
+        <img class="art" id="art" alt="" style="display:none"/>
+        <div class="artph" id="artPh">♪</div>
+      </div>
+      <div class="brand-label">KittyPlayer :3</div>
+    </div>
+    <div class="meta">
+      <div class="track" id="track">KittyPlayer</div>
+      <div class="marquee-window" id="marqueeWindow">
+        <div class="artist" id="artist"></div>
+      </div>
+      <div class="island-waves" id="islandWaves" title="Click to expand playlists">
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+      </div>
+      <div class="row">
+        <div class="progress-wrap">
+          <div class="bar-bg" id="progressBg"><div class="bar-fill" id="fill"></div></div>
+        </div>
+        <div class="times-row">
+          <span id="tCur" class="time-label">0:00</span>
+          <div class="centered-controls-group">
+            <div class="btns">
+              <svg id="btnPrev" width="20" height="20" viewBox="0 0 24 24"><path d="M6 19h2V5H6v14zm3.5-7L18 19V5L9.5 12z"/></svg>
+              <div id="btnPP">
+                <svg width="20" height="20" viewBox="0 0 24 24" id="svgPP"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              </div>
+              <svg id="btnNext" width="20" height="20" viewBox="0 0 24 24"><path d="M4 5v14l8.5-7L4 5zm12 0v14h2V5h-2z"/></svg>
+            </div>
+            <div class="vol-container">
+              <div class="vol-icon" id="volIcon">
+                <svg width="20" height="20" viewBox="0 0 24 24" id="svgVol"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+              </div>
+              <div class="vol-bg" id="volBg"><div class="vol-fill" id="volFill"></div></div>
+            </div>
+          </div>
+          <span id="tTot" class="time-label">0:00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer" id="extendedDrawer">
+  <input type="text" class="search-box" id="searchBox" placeholder="Search songs or artists..." />
+  <div class="nav-tabs" id="drawerTabs">
+    <div class="tab active" id="tabPlaylists">Playlists</div>
+    <div class="tab" id="tabRecents">Recents</div>
+    <div class="tab" id="tabSearch">Search</div>
+  </div>
+  <div class="account-row" id="accountRow">
+    <button class="login-btn" id="spotifyLoginBtn">Connect Spotify</button>
+  </div>
+  <div class="back-btn" id="backBtn">&lt; Back to Playlists</div>
+  <div class="list-container" id="listContainer"></div>
+</div>
+<canvas id="colorThiefCanvas" style="display:none;" width="50" height="50"></canvas>
+
+<script>
+let total=1,pos=0,playing=false,lastImg="",baseScale=1.0,drawerOpen=false,viewingPlaylist=false,currentVolume=0.7,isMuted=false,savedVolume=0.7;
+let recentTracksMemory=[],loadedPlaylistsMemory=[],currentGradient="linear-gradient(180deg,#ffb6c1,#ff8fa3,#e6607a)";
+const playPath="M8 5v14l11-7z",pausePath="M6 19h4V5H6v14zm8-14v14h4V5h-4z";
+const volHigh="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
+const volLow="M7 9v6h4l5 5V4l-5 5H7zm11.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z";
+const volMute="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.21.05-.42.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z";
+
+function fmt(s){s=Math.max(0,Math.floor(s+.5));return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")}
+
+function updateWaveColors(r,g,b){
+  // Make a pleasant 3-stop gradient that stays close to the cover
+  const r2=Math.min(255,Math.round(r*0.85+40));
+  const g2=Math.min(255,Math.round(g*0.85+30));
+  const b2=Math.min(255,Math.round(b*0.9+40));
+  const r3=Math.max(0,Math.round(r*0.55));
+  const g3=Math.max(0,Math.round(g*0.55));
+  const b3=Math.min(255,Math.round(b*0.7+30));
+  currentGradient=`linear-gradient(180deg,rgb(${r},${g},${b}),rgb(${r2},${g2},${b2}),rgb(${r3},${g3},${b3}))`;
+  document.querySelectorAll('.wave-bar').forEach(bar=>{bar.style.background=currentGradient});
+  document.getElementById('playerShell').style.setProperty('--bg-glow',`rgb(${r},${g},${b})`);
+
+  // Tint the simple triangle ears toward the album palette (keep them pink-ish)
+  const er = Math.min(255, Math.round(r * 0.45 + 180));
+  const eg = Math.min(255, Math.round(g * 0.35 + 140));
+  const eb = Math.min(255, Math.round(b * 0.45 + 165));
+  document.documentElement.style.setProperty('--ear-color', `rgb(${er},${eg},${eb})`);
+  document.documentElement.style.setProperty('--wave-grad', currentGradient);
+}
+
+function extractColorsFromImage(imgEl){
+  try{
+    const canvas=document.getElementById('colorThiefCanvas');
+    const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,50,50);
+    ctx.drawImage(imgEl,0,0,50,50);
+    const imgData=ctx.getImageData(0,0,50,50).data;
+    let r=0,g=0,b=0,count=0;
+    for(let i=0;i<imgData.length;i+=16){
+      if(imgData[i+3]>180){
+        const pr=imgData[i],pg=imgData[i+1],pb=imgData[i+2];
+        const sum=pr+pg+pb;
+        // skip near-black / near-white so we get the real artwork tone
+        if(sum>60 && sum<700){r+=pr;g+=pg;b+=pb;count++}
+      }
+    }
+    if(count>0){
+      r=Math.floor(r/count);g=Math.floor(g/count);b=Math.floor(b/count);
+      updateWaveColors(r,g,b);
+    }
+  }catch(e){}
+}
+
+function setArt(url){
+  const img=document.getElementById("art"),ph=document.getElementById("artPh");
+  if(!url){
+    img.style.display="none";
+    ph.style.display="flex";
+    lastImg="";
+    document.getElementById('playerShell').style.setProperty('--bg-glow','transparent');
+    return;
+  }
+  if(url===lastImg)return;
+  lastImg=url;
+  img.crossOrigin="Anonymous";
+  img.onload=()=>{
+    img.style.display="block";
+    ph.style.display="none";
+    extractColorsFromImage(img);
+  };
+  img.onerror=()=>{
+    img.removeAttribute('crossOrigin');
+    img.onload=null;
+    img.onerror=()=>{
+      img.style.display="none";
+      ph.style.display="flex";
+      lastImg="";
+      document.getElementById('playerShell').style.setProperty('--bg-glow','transparent');
+    };
+    img.src=url;
+  };
+  img.src=url;
+}
+
+function updateArtistText(text){
+  const el=document.getElementById("artist");
+  const win=document.getElementById("marqueeWindow");
+  el.textContent=text||"";
+  el.style.animation="none";
+  el.style.paddingLeft="0";
+  if(el.offsetWidth>win.offsetWidth){
+    el.style.paddingLeft="100%";
+    const duration=Math.max(5,el.offsetWidth/30);
+    el.style.animation=`marquee ${duration}s linear infinite`;
+  }
+}
+
+function paintVol(){
+  const vFill=document.getElementById("volFill");
+  const vPath=document.querySelector("#svgVol path");
+  if(isMuted || currentVolume===0){
+    vFill.style.width="0%";
+    vPath.setAttribute("d",volMute);
+  }else{
+    vFill.style.width=(currentVolume*100)+"%";
+    if(currentVolume<0.4) vPath.setAttribute("d",volLow);
+    else vPath.setAttribute("d",volHigh);
+  }
+}
+
+function paint(){
+  const r=total>0?Math.min(1,pos/total):0;
+  document.getElementById("fill").style.width=(r*100)+"%";
+  document.getElementById("tCur").textContent=fmt(pos);
+  document.getElementById("tTot").textContent=fmt(total);
+}
+
+/* ===== SIZE TOGGLE – scale the whole cat-container so ears + shell stay together ===== */
+function updateWindowBounds(){
+  const scale = baseScale;
+  const baseW = 480;
+  const baseH = drawerOpen ? 450 : 130;
+  const targetW = Math.round(baseW * scale);
+  const targetH = Math.round(baseH * scale);
+
+  // Visual scale keeps ears + shell + drawer perfectly aligned
+  document.getElementById("catContainer").style.transform = `scale(${scale})`;
+  document.getElementById("extendedDrawer").style.transform = `scale(${scale})`;
+  document.getElementById("extendedDrawer").style.width = "450px";
+
+  window.electronAPI.resizeWindow({width: targetW, height: targetH});
+}
+
+function populateList(items){
+  const container=document.getElementById("listContainer");
+  container.innerHTML="";
+  if(!items||items.length===0){
+    const connected = loginBtn && loginBtn.classList.contains('connected');
+    container.innerHTML = connected
+      ? `<div class="search-hint">Connected, but no playlists loaded.<br><br>Click <b>Reconnect Spotify</b> below<br>to grant playlist access, then open this tab again.</div>`
+      : `<div class="search-hint">No playlists found<br><br>Click <b>Connect Spotify</b> below to log in</div>`;
+    return;
+  }
+  items.forEach(item=>{
+    const row=document.createElement("div");
+    row.className="list-item";
+
+    // Image (playlist cover or song cover)
+    let visualMarkup = `<div class="list-thumb-ph">${item.isPlaylist ? "📁" : "♪"}</div>`;
+    if (item.image) {
+      visualMarkup = `<img class="list-thumb" src="${item.image}" alt="" onerror="this.outerHTML='<div class=\\'list-thumb-ph\\'>${item.isPlaylist?"📁":"♪"}</div>'"/>`;
+    }
+
+    // Text: playlist = name only; song = name + grey artist
+    const subText = item.isPlaylist
+      ? (item.artist || "")                     // optional "X tracks" etc
+      : (item.artist || "");
+
+    const playMarkup = item.isPlaylist
+      ? `<div class="play-btn" title="Play playlist">▶</div>`
+      : "";
+
+    row.innerHTML = `
+      ${visualMarkup}
+      <div class="list-info">
+        <div class="list-title">${item.title || ""}</div>
+        ${subText ? `<div class="list-sub">${subText}</div>` : ""}
+      </div>
+      ${playMarkup}`;
+
+    const playBtn = row.querySelector('.play-btn');
+    if (playBtn) {
+      playBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        window.electronAPI.sendControl('playPlaylist', item.id);
+      });
+    }
+
+    row.addEventListener('click', () => {
+      if (item.isPlaylist) {
+        viewingPlaylist = true;
+        document.getElementById('drawerTabs').style.display = 'none';
+        document.getElementById('backBtn').style.display = 'block';
+        document.getElementById('accountRow').style.display = 'none';
+        window.electronAPI.sendControl('getPlaylistTracks', item.id);
+      } else if (item.id) {
+        // Play in background – does not bring Spotify to front
+        window.electronAPI.sendControl('playUri', item.id);
+      }
+    });
+    container.appendChild(row);
+  });
+}
+
+document.getElementById('backBtn').addEventListener('click',()=>{
+  viewingPlaylist=false;
+  document.getElementById('backBtn').style.display='none';
+  document.getElementById('drawerTabs').style.display='flex';
+  document.getElementById('accountRow').style.display='flex';
+  populateList(loadedPlaylistsMemory);
+});
+
+// Spotify connect / reconnect button
+const loginBtn = document.getElementById('spotifyLoginBtn');
+loginBtn.addEventListener('click', () => {
+  loginBtn.textContent = 'Connecting…';
+  loginBtn.disabled = true;
+  window.electronAPI.sendControl('login');
+  setTimeout(() => {
+    loginBtn.disabled = false;
+    if (!loginBtn.classList.contains('connected')) {
+      loginBtn.textContent = 'Connect Spotify';
+    }
+  }, 15000);
+});
+
+// Auth status from main process → update button label
+if (window.electronAPI.onAuthStatus) {
+  window.electronAPI.onAuthStatus((data) => {
+    if (data && data.connected) {
+      loginBtn.textContent = 'Reconnect Spotify';
+      loginBtn.classList.add('connected');
+      loginBtn.disabled = false;
+    } else {
+      loginBtn.textContent = 'Connect Spotify';
+      loginBtn.classList.remove('connected');
+      loginBtn.disabled = false;
+    }
+  });
+}
+
+document.getElementById('islandWaves').addEventListener('click',()=>{
+  drawerOpen=!drawerOpen;
+  const dr=document.getElementById("extendedDrawer");
+  if(drawerOpen){
+    dr.classList.add("open");
+    // Always try to load playlists when opening the drawer
+    if(!viewingPlaylist) {
+      const container = document.getElementById('listContainer');
+      if (!loadedPlaylistsMemory.length) {
+        container.innerHTML = `<div class="search-hint">Loading playlists…</div>`;
+      }
+      window.electronAPI.sendControl('getRealPlaylists');
+    }
+  }else{
+    dr.classList.remove("open");
+  }
+  updateWindowBounds();
+});
+
+/* Click album art → cycle size. Everything (ears included) scales together and stays bottom-centered */
+document.getElementById('artAction').addEventListener('click',()=>{
+  if(baseScale===1.0) baseScale=1.22;
+  else if(baseScale===1.22) baseScale=0.82;
+  else baseScale=1.0;
+  updateWindowBounds();
+});
+
+document.getElementById('tabPlaylists').addEventListener('click',e=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+  window.electronAPI.sendControl('getRealPlaylists');
+});
+document.getElementById('tabRecents').addEventListener('click',e=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+  populateList(recentTracksMemory);
+});
+document.getElementById('tabSearch').addEventListener('click',e=>{
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));e.target.classList.add('active');
+  viewingPlaylist=false;document.getElementById('backBtn').style.display='none';document.getElementById('drawerTabs').style.display='flex';
+  document.getElementById('listContainer').innerHTML=`<div class="search-hint">Type a song or artist and press Enter</div>`;
+  document.getElementById('searchBox').focus();
+});
+
+window.electronAPI.onPlaylistsReply(playlists=>{
+  loadedPlaylistsMemory = playlists || [];
+  // Always refresh the list when we're on Playlists and not inside a playlist
+  if (!viewingPlaylist && document.getElementById('tabPlaylists').classList.contains('active')) {
+    populateList(loadedPlaylistsMemory);
+  }
+  if (loginBtn) {
+    if (loadedPlaylistsMemory.length > 0) {
+      loginBtn.textContent = 'Reconnect Spotify';
+      loginBtn.classList.add('connected');
+    }
+    loginBtn.disabled = false;
+  }
+});
+window.electronAPI.onTracksReply(tracks=>{if(viewingPlaylist)populateList(tracks)});
+window.electronAPI.onSearchReply(tracks=>{populateList(tracks)});
+
+document.getElementById('searchBox').addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&e.target.value.trim()){
+    window.electronAPI.sendControl('search',e.target.value);
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('tabSearch').classList.add('active');
+  }
+});
+
+document.getElementById('btnPrev').addEventListener('click',()=>window.electronAPI.sendControl('prev'));
+document.getElementById('btnPP').addEventListener('click',()=>window.electronAPI.sendControl('playpause'));
+document.getElementById('btnNext').addEventListener('click',()=>window.electronAPI.sendControl('next'));
+
+document.getElementById('progressBg').addEventListener('click',e=>{
+  const rect=e.currentTarget.getBoundingClientRect();
+  const clickX=e.clientX-rect.left;
+  const percentage=Math.max(0,Math.min(1,clickX/rect.width));
+  const targetSeconds=Math.floor(percentage*total);
+  pos=targetSeconds;paint();
+  window.electronAPI.sendControl('scrub',targetSeconds);
+});
+
+/* ===== VOLUME – now actually sent to Spotify ===== */
+document.getElementById('volBg').addEventListener('click',e=>{
+  const rect=e.currentTarget.getBoundingClientRect();
+  const clickX=e.clientX-rect.left;
+  currentVolume=Math.max(0,Math.min(1,clickX/rect.width));
+  isMuted=false;
+  paintVol();
+  window.electronAPI.sendControl('volume', currentVolume);
+});
+document.getElementById('volIcon').addEventListener('click',()=>{
+  isMuted=!isMuted;
+  if(isMuted){
+    savedVolume=currentVolume || 0.7;
+    window.electronAPI.sendControl('volume', 0);
+  }else{
+    currentVolume=savedVolume || 0.7;
+    window.electronAPI.sendControl('volume', currentVolume);
+  }
+  paintVol();
+});
+
+window.electronAPI.onSpotifyData(d=>{
+  document.getElementById("track").textContent=d.track||"KittyPlayer";
+  updateArtistText(d.artist||"No track playing");
+  total=Math.max(1,Number(d.duration)||1);
+  const incomingPos=Math.max(0,Number(d.position)||0);
+  if(!playing||Math.abs(incomingPos-pos)>2)pos=incomingPos;
+  playing=d.status==="playing";
+  document.querySelector("#svgPP path").setAttribute("d",playing?pausePath:playPath);
+  setArt(d.image||"");
+  if(d.color) updateWaveColors(d.color.r, d.color.g, d.color.b);
+  if(d.volume!==undefined && !isMuted){
+    currentVolume=Number(d.volume);
+    paintVol();
+  }
+  paint();
+
+  // Lightweight ad awareness (already present) – skip adding ads to recents
+  const isAd = d.isAd || (d.track && d.track.toLowerCase().includes("advertisement")) || (d.artist && d.artist.toLowerCase().includes("spotify")) || (d.duration && Number(d.duration)<35);
+  if(d.track && d.track!=="KittyPlayer" && d.id && !isAd && !recentTracksMemory.some(t=>t.id===d.id)){
+    recentTracksMemory.unshift({title:d.track,artist:d.artist,id:d.id,image:d.image});
+    if(recentTracksMemory.length>20)recentTracksMemory.pop();
+  }
+});
+
+setInterval(()=>{if(playing&&pos<total){pos=Math.min(total,pos+0.1);paint()}},100);
+const bars=document.querySelectorAll('.wave-bar');
+setInterval(()=>{
+  bars.forEach(bar=>{
+    if(playing){bar.style.height=(Math.floor(Math.random()*18)+4)+'px'}
+    else{bar.style.height='5px'}
+    bar.style.background=currentGradient;
+  });
+},140);
+
+paintVol();
+updateWindowBounds(); // initial correct size
+</script>
+
+<script>
+(function(){
+  function isNoDrag(el) {
+    while (el && el !== document.body) {
+      if (el.classList && (
+        el.classList.contains('btns') || el.classList.contains('vol-container') ||
+        el.classList.contains('vol-icon') || el.classList.contains('vol-bg') ||
+        el.classList.contains('progress-wrap') || el.classList.contains('bar-bg') ||
+        el.classList.contains('art-wrapper') || el.classList.contains('island-waves') ||
+        el.classList.contains('drawer') || el.classList.contains('login-btn') ||
+        el.classList.contains('list-item') || el.classList.contains('tab') ||
+        el.classList.contains('search-box') || el.classList.contains('play-btn') ||
+        el.classList.contains('back-btn')
+      )) return true;
+      if (el.id === 'btnPP' || el.id === 'btnPrev' || el.id === 'btnNext') return true;
+      el = el.parentElement;
+    }
+    return false;
+  }
+  document.addEventListener('mousedown', function(e) {
+    if (e.button !== 0) return;
+    if (isNoDrag(e.target)) return;
+    try {
+      if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.kitty) {
+        window.webkit.messageHandlers.kitty.postMessage({ action: 'start-drag' });
+      } else if (window.electronAPI && window.electronAPI.sendControl) {
+        window.electronAPI.sendControl('start-drag');
+      }
+    } catch (err) {}
+  }, true);
+})();
+</script>
+
+</body>
+</html>
