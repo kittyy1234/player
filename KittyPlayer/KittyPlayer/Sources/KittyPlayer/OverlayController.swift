@@ -6,6 +6,7 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
     private var webView: WKWebView!
     private let spotify: SpotifyConnector
     private var isReady = false
+    private var pendingJS: [String] = []
 
     init(spotify: SpotifyConnector) {
         self.spotify = spotify
@@ -123,7 +124,12 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
 
     private func eval(_ js: String) {
         DispatchQueue.main.async { [weak self] in
-            self?.webView.evaluateJavaScript(js, completionHandler: nil)
+            guard let self else { return }
+            if self.isReady {
+                self.webView.evaluateJavaScript(js, completionHandler: nil)
+            } else {
+                self.pendingJS.append(js)
+            }
         }
     }
 
@@ -157,5 +163,9 @@ final class OverlayController: NSObject, WKScriptMessageHandler, WKNavigationDel
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         isReady = true
+        pendingJS.forEach { webView.evaluateJavaScript($0, completionHandler: nil) }
+        pendingJS.removeAll()
     }
 }
+
+// and then i mog
