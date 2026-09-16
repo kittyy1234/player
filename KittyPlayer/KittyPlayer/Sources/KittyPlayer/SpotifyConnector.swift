@@ -56,17 +56,21 @@ final class SpotifyConnector {
     }
 
     func login(completion: @escaping (Bool) -> Void) {
+        NSLog("KittyPlayer: login() called")
         let verifier = Self.randomString(64)
         let challenge = Self.sha256Base64URL(verifier)
 
         let server = AuthServer(port: 8888) { [weak self] code in
+            NSLog("KittyPlayer: received code=\(code)")
             self?.exchangeCode(code, verifier: verifier) { ok in
+                NSLog("KittyPlayer: exchangeCode result=\(ok)")
                 completion(ok)
             }
         }
         authServer = server
 
         server.start { [weak self] wasBound in
+            NSLog("KittyPlayer: AuthServer bound=\(wasBound)")
             guard let self else { return }
             guard wasBound else {
                 DispatchQueue.main.async { completion(false) }
@@ -84,6 +88,7 @@ final class SpotifyConnector {
             ]
             if let url = comps.url {
                 DispatchQueue.main.async {
+                    NSLog("KittyPlayer: opening auth URL")
                     NSWorkspace.shared.open(url)
                 }
             }
@@ -102,10 +107,21 @@ final class SpotifyConnector {
             "code_verifier": verifier,
         ]
         req.httpBody = body.queryString.data(using: .utf8)
-        URLSession.shared.dataTask(with: req) { [weak self] data, _, _ in
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+            if let error {
+                NSLog("KittyPlayer: exchangeCode network error=\(error)")
+            }
+            if let http = response as? HTTPURLResponse {
+                NSLog("KittyPlayer: exchangeCode status=\(http.statusCode)")
+            }
             guard let self, let data,
-                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let access = obj["access_token"] as? String else {
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                NSLog("KittyPlayer: exchangeCode failed to parse response")
+                completion(false)
+                return
+            }
+            guard let access = obj["access_token"] as? String else {
+                NSLog("KittyPlayer: exchangeCode response body=\(obj)")
                 completion(false)
                 return
             }
@@ -465,6 +481,7 @@ final class AuthServer {
 
     func start(bound: @escaping (Bool) -> Void) {
         sock = Darwin.socket(AF_INET, SOCK_STREAM, 0)
+        NSLog("KittyPlayer: socket() = \(sock)")
         guard sock >= 0 else { bound(false); return }
 
         var reuse: Int32 = 1
@@ -479,19 +496,23 @@ final class AuthServer {
                 bind(sock, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
+        NSLog("KittyPlayer: bind() = \(bindResult), errno=\(errno)")
         guard bindResult == 0 else {
             close(sock)
             sock = -1
             bound(false)
             return
         }
-        guard listen(sock, 8) == 0 else {
+        let listenResult = listen(sock, 8)
+        NSLog("KittyPlayer: listen() = \(listenResult), errno=\(errno)")
+        guard listenResult == 0 else {
             close(sock)
             sock = -1
             bound(false)
             return
         }
 
+        NSLog("KittyPlayer: server bound successfully, starting accept loop")
         bound(true)
         DispatchQueue.global().async { [weak self] in self?.acceptLoop() }
     }
@@ -514,6 +535,7 @@ final class AuthServer {
                 }
             }
             guard client >= 0 else { continue }
+            NSLog("KittyPlayer: accepted connection")
 
             var buffer = [UInt8](repeating: 0, count: 16384)
             let n = read(client, &buffer, buffer.count)
@@ -526,6 +548,7 @@ final class AuthServer {
                     ch != " " && ch != "&" && ch != "\r" && ch != "\n"
                 }))
             }
+            NSLog("KittyPlayer: parsed code empty=\(code.isEmpty)")
 
             let html = """
             <html><body style="font-family:-apple-system,sans-serif;padding:40px;background:#111;color:#fff">
@@ -546,3 +569,5 @@ final class AuthServer {
         }
     }
 }
+
+// finish
