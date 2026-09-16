@@ -55,43 +55,60 @@ final class SpotifyConnector {
         getValidAccessToken { completion($0 != nil) }
     }
 
+    private let legacyRedirectURI = "https://cryptrixz.github.io/player/callback.html"
+
     func login(completion: @escaping (Bool) -> Void) {
-        NSLog("KittyPlayer: login() called")
-        let verifier = Self.randomString(64)
-        let challenge = Self.sha256Base64URL(verifier)
+        NSLog("KittyPlayer: login() called (legacy paste-token flow)")
+        var comps = URLComponents(string: "https://accounts.spotify.com/authorize")!
+        comps.queryItems = [
+            URLQueryItem(name: "client_id", value: clientId),
+            URLQueryItem(name: "response_type", value: "code"),
+            URLQueryItem(name: "redirect_uri", value: legacyRedirectURI),
+            URLQueryItem(name: "scope", value: scopes),
+        ]
+        guard let url = comps.url else { completion(false); return }
 
-        let server = AuthServer(port: 8888) { [weak self] code in
-            NSLog("KittyPlayer: received code=\(code)")
-            self?.exchangeCode(code, verifier: verifier) { ok in
-                NSLog("KittyPlayer: exchangeCode result=\(ok)")
-                completion(ok)
-            }
+        DispatchQueue.main.async { [weak self] in
+            NSWorkspace.shared.open(url)
+            self?.promptForPastedToken(completion: completion)
         }
-        authServer = server
+    }
 
-        server.start { [weak self] wasBound in
-            NSLog("KittyPlayer: AuthServer bound=\(wasBound)")
-            guard let self else { return }
-            guard wasBound else {
-                DispatchQueue.main.async { completion(false) }
-                return
-            }
-            var comps = URLComponents(string: "https://accounts.spotify.com/authorize")!
-            comps.queryItems = [
-                URLQueryItem(name: "client_id", value: self.clientId),
-                URLQueryItem(name: "response_type", value: "code"),
-                URLQueryItem(name: "redirect_uri", value: self.redirectURI),
-                URLQueryItem(name: "code_challenge_method", value: "S256"),
-                URLQueryItem(name: "code_challenge", value: challenge),
-                URLQueryItem(name: "scope", value: self.scopes),
-                URLQueryItem(name: "prompt", value: "consent"),
-            ]
-            if let url = comps.url {
-                DispatchQueue.main.async {
-                    NSLog("KittyPlayer: opening auth URL")
-                    NSWorkspace.shared.open(url)
-                }
-            }
+    private func promptForPastedToken(completion: @escaping (Bool) -> Void) {
+        let alert = NSAlert()
+        alert.messageText = "Connect Spotify"
+        alert.informativeText = "After approving in your browser, paste the value shown on the callback page here."
+        alert.addButton(withTitle: "Connect")
+        alert.addButton(withTitle: "Cancel")
+
+        let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 320, height: 24))
+        field.placeholderString = "paste token here"
+        alert.accessoryView = field
+        alert.window.initialFirstResponder = field
+
+        NSApp.activate(ignoringOtherApps: true)
+        let response = alert.runModal()
+        guard response == .alertFirstButtonReturn else {
+            completion(false)
+            return
+        }
+
+        let pasted = field.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !pasted.isEmpty else {
+            completion(false)
+            return
+        }
+
+        if pasted.count > 100 {
+            NSLog("KittyPlayer: pasted value looks like a long-lived access token, using directly")
+            self.accessToken = pasted
+            self.refreshToken = nil
+            self.tokenExpires = Date().addingTimeInterval(3500)
+            self.saveTokens()
+            completion(true)
+        } else {
+            NSLog("KittyPlayer: pasted value is short, treating as authorization code")
+            self.exchangeCode(pasted, verifier: "", completion: completion)
         }
     }
 
@@ -569,5 +586,3 @@ final class AuthServer {
         }
     }
 }
-
-// finish
